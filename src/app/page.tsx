@@ -2,9 +2,31 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 
-const API_BASE = typeof window === 'undefined' 
-  ? '' 
-  : window.location.origin + '/api'
+// 配置 OpenCode 服务地址
+// 用户可以修改这个地址来连接到他们的 OpenCode 服务
+const getOpenCodeUrl = () => {
+  if (typeof window !== 'undefined') {
+    // 优先使用环境变量
+    const envUrl = process.env.NEXT_PUBLIC_OPENCODE_URL
+    if (envUrl) return envUrl
+    
+    // 检查 URL 参数 (例如: ?server=http://your-vm-ip:4096)
+    const params = new URLSearchParams(window.location.search)
+    const serverParam = params.get('server')
+    if (serverParam) return serverParam
+  }
+  return 'http://localhost:4096'  // 默认地址
+}
+
+const getApiBase = () => {
+  const serverUrl = getOpenCodeUrl()
+  return serverUrl
+}
+
+const getWsBase = () => {
+  const serverUrl = getOpenCodeUrl()
+  return serverUrl.replace('http', 'ws')
+}
 
 interface Session {
   id: string
@@ -307,9 +329,35 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '50%',
     animation: 'pulse 1.4s ease-in-out infinite',
   },
+  serverStatus: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '4px 10px',
+    backgroundColor: '#334155',
+    borderRadius: '6px',
+    fontSize: '12px',
+    color: '#94a3b8',
+  },
+  statusDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+  },
+  statusConnected: {
+    backgroundColor: '#22c55e',
+  },
+  statusDisconnected: {
+    backgroundColor: '#ef4444',
+  },
+  statusConnecting: {
+    backgroundColor: '#eab308',
+  },
 }
 
 export default function HomePage() {
+  const [serverUrl, setServerUrl] = useState(getOpenCodeUrl())
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting')
   const [sessions, setSessions] = useState<Session[]>([])
   const [currentSession, setCurrentSession] = useState<Session | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -336,9 +384,29 @@ export default function HomePage() {
     }
   }, [currentSession?.id])
 
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const response = await fetch(`${getApiBase()}/global/health`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(5000)
+        })
+        if (response.ok) {
+          setConnectionStatus('connected')
+          loadSessions()
+        } else {
+          setConnectionStatus('disconnected')
+        }
+      } catch {
+        setConnectionStatus('disconnected')
+      }
+    }
+    checkConnection()
+  }, [])
+
   const loadSessions = async () => {
     try {
-      const response = await fetch(`${API_BASE}/session`)
+      const response = await fetch(`${getApiBase()}/session`)
       const data = await response.json()
       if (data.success) {
         setSessions(data.data.items || [])
@@ -350,7 +418,7 @@ export default function HomePage() {
 
   const loadMessages = async (sessionID: string) => {
     try {
-      const response = await fetch(`${API_BASE}/session/${sessionID}/messages`)
+      const response = await fetch(`${getApiBase()}/session/${sessionID}/messages`)
       const data = await response.json()
       if (data.success) {
         const msgs: Message[] = (data.data.items || []).map((m: any) => ({
@@ -370,7 +438,7 @@ export default function HomePage() {
   const createSession = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch(`${API_BASE}/session`, {
+      const response = await fetch(`${getApiBase()}/session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: 'New Session' }),
@@ -404,7 +472,7 @@ export default function HomePage() {
     setIsStreaming(true)
 
     try {
-      const response = await fetch(`${API_BASE}/session/${currentSession.id}/prompt`, {
+      const response = await fetch(`${getApiBase()}/session/${currentSession.id}/prompt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -600,6 +668,12 @@ export default function HomePage() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Server Status */}
+            <div style={styles.serverStatus} title={`Connected to ${serverUrl}`}>
+              <div style={{ ...styles.statusDot, ...(connectionStatus === 'connected' ? styles.statusConnected : connectionStatus === 'connecting' ? styles.statusConnecting : styles.statusDisconnected) }}></div>
+              <span>{connectionStatus === 'connected' ? 'Connected' : connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}</span>
             </div>
             
             {currentSession && (

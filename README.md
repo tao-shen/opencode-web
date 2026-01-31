@@ -1,104 +1,155 @@
-# OpenCode Web - Vercel Deployment
+# OpenCode Web + Server 部署指南
 
-## Quick Deploy
+这是一个完整的 OpenCode 部署方案，包含：
+- **OpenCode Server** - 运行在 Oracle Cloud (永久免费)
+- **Web 前端** - 运行在 Vercel (免费)
 
-### 1. Push to GitHub
+## 架构图
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              Oracle Cloud (永久免费 VM)                      │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  OpenCode Server (Docker 容器)                      │   │
+│  │  • 端口: 4096                                       │   │
+│  │  • PTY 终端会话                                     │   │
+│  │  • 工具执行 (read/write/edit/bash)                  │   │
+│  │  • AI Provider 集成                                 │   │
+│  └─────────────────────────────────────────────────────┘   │
+│  访问地址: http://<VM-IP>:4096                              │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              │ WebSocket + REST API
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Vercel (免费)                           │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  OpenCode Web UI                                    │   │
+│  │  • 终端风格界面                                     │   │
+│  │  • 连接到您的 OpenCode Server                       │   │
+│  │  • 支持 ?server= 参数指定服务地址                    │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 第一步: 部署 OpenCode Server (Oracle Cloud)
+
+在 Oracle Cloud 控制台打开 **Cloud Shell**，执行：
+
 ```bash
+# 方法1: 直接执行
+curl -sL https://raw.githubusercontent.com/taoshen2000/opencode-web/main/deploy-opencode.sh -o deploy-opencode.sh
+bash deploy-opencode.sh
+
+# 或者方法2: 克隆仓库后执行
+git clone https://github.com/taoshen2000/opencode-web.git
+cd opencode-web
+bash deploy-opencode.sh
+```
+
+### 部署成功后：
+- 访问地址: `http://<您的VM-IP>:4096`
+- 查看日志: `docker logs -f opencode`
+- 重启服务: `docker compose restart`
+
+---
+
+## 第二步: 部署 Web 前端 (Vercel)
+
+### 1. 推送代码到 GitHub
+
+```bash
+cd opencode-web
 git init
 git add .
-git commit -m "Initial commit: OpenCode Web"
+git commit -m "Update: Connect to external OpenCode server"
 gh repo create opencode-web --public --source=. --push
 ```
 
-### 2. Deploy to Vercel
-Visit: https://vercel.com/new
+### 2. 部署到 Vercel
 
-1. Select your GitHub repository
-2. Configure environment variables:
-   - `REDIS_URL` - Upstash Redis URL
-   - `OPENAI_API_KEY` - OpenAI API key
-   - `ANTHROPIC_API_KEY` - Anthropic API key (optional)
-   - `NEXT_PUBLIC_API_URL` - Your Vercel deployment URL
+1. 访问: https://vercel.com/new
+2. 选择刚才创建的 GitHub 仓库
+3. 不需要配置环境变量（前端会自动连接）
+4. 点击 **Deploy**
 
-### 3. Database Setup (Upstash Redis)
+### 3. 访问 Web 界面
+
+部署完成后，访问 Vercel 提供的 URL，然后：
+
+```
+# 连接到您的 OpenCode Server:
+https://your-vercel-app.vercel.app/?server=http://your-vm-ip:4096
+
+# 或者在 Vercel 环境变量中设置:
+NEXT_PUBLIC_OPENCODE_URL=http://your-vm-ip:4096
+```
+
+---
+
+## 使用说明
+
+### 1. 直接访问 OpenCode 终端
+```
+http://<VM-IP>:4096
+```
+- 完整的终端界面
+- 所有 OpenCode 功能可用
+
+### 2. 通过 Web 前端访问
+```
+https://<Vercel-URL>
+```
+- 更友好的 Web 界面
+- 需要在 URL 中指定服务器地址
+
+---
+
+## 故障排除
+
+### OpenCode Server 无法启动?
+```bash
+# 检查 Docker 状态
+docker ps -a
+
+# 查看错误日志
+docker logs opencode
+
+# 重启服务
+docker compose restart
+```
+
+### Web 前端无法连接?
+1. 检查 OpenCode Server 是否运行: `curl http://<VM-IP>:4096/global/health`
+2. 确保 Oracle Cloud 安全组已开放端口 4096
+3. 在 URL 中添加 server 参数: `https://...?server=http://<VM-IP>:4096`
+
+### 端口未开放?
+在 Oracle Cloud 控制台:
+```
+Networking → Virtual Cloud Networks → <您的VNC>
+→ Security Lists → Default Security List
+→ Add Ingress Rules:
+  - Source CIDR: 0.0.0.0/0
+  - Destination Port: 4096
+  - Protocol: TCP
+```
+
+---
+
+## 环境变量 (可选)
+
+如果使用 OpenAI/Anthropic API，在 OpenCode 终端中配置:
 
 ```bash
-# Create Upstash account and database
-# Get your REDIS_URL from Upstash console
-REDIS_URL=redis://username:password@host:port
+# 在 OpenCode 终端中
+/config set provider.openai.apiKey sk-xxxxx
+/config set provider.anthropic.apiKey sk-ant-xxxxx
 ```
 
-## Environment Variables
+---
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `REDIS_URL` | Yes | Upstash Redis connection URL |
-| `OPENAI_API_KEY` | Yes | OpenAI API key for GPT models |
-| `ANTHROPIC_API_KEY` | No | Anthropic API key for Claude models |
-| `NEXT_PUBLIC_API_URL` | No | API base URL (auto-detected in production) |
+## 资源
 
-## Development
-
-```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Start production server
-npm start
-```
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────┐
-│  Vercel Edge/Serverless Functions               │
-│  ├── /api/* - REST API endpoints                │
-│  └── /api/sse/* - Server-Sent Events            │
-├─────────────────────────────────────────────────┤
-│  Next.js Frontend (React)                       │
-│  ├── / - Main UI                                │
-│  └── /session/[id] - Session view               │
-├─────────────────────────────────────────────────┤
-│  Upstash Redis                                  │
-│  ├── Session storage                            │
-│  ├── Message storage                            │
-│  └── Event pub/sub                              │
-└─────────────────────────────────────────────────┘
-```
-
-## API Endpoints
-
-### Sessions
-- `POST /api/session` - Create new session
-- `GET /api/session` - List sessions
-- `GET /api/session/:id` - Get session
-- `DELETE /api/session/:id` - Delete session
-- `POST /api/session/:id/prompt` - Submit prompt
-- `POST /api/session/:id/abort` - Abort running
-- `POST /api/session/:id/fork` - Fork session
-
-### Real-time
-- `GET /api/sse/session/:id` - SSE event stream
-
-### Configuration
-- `GET /api/config` - Get available providers/models
-- `GET /api/tool` - List available tools
-
-## Production Considerations
-
-1. **Redis Connection**: Use Upstash for serverless-compatible Redis
-2. **SSE Limitations**: Vercel has execution time limits; consider using:
-   - Vercel Edge Functions for SSE
-   - Third-party service like Pusher for extended connections
-3. **AI API Costs**: Monitor usage and implement rate limiting
-4. **Security**: Add authentication (e.g., Clerk, Auth.js)
-5. **File Storage**: For persistent file storage, consider:
-   - Vercel Blob
-   - AWS S3
-   - Cloudflare R2
+- OpenCode 官方仓库: https://github.com/anomalyco/opencode
+- 项目仓库: https://github.com/taoshen2000/opencode-web
