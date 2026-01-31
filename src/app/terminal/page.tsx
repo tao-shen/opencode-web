@@ -105,7 +105,7 @@ export default function TerminalPage() {
         term.write('\r\n\x1b[1;34m🚀 Initializing OpenCode Terminal...\x1b[0m\r\n')
 
         // Connect via Cloudflare Tunnel (WSS over HTTPS)
-        const wsUrl = `wss://craig-shake-gender-spoke.trycloudflare.com/pty/connect`
+        const wsUrl = `wss://conflict-brandon-its-loaded.trycloudflare.com/pty/connect`
         
         setStatus('connecting')
         term.write(`\r\n\x1b[33mConnecting to ${wsUrl}...\x1b[0m\r\n`)
