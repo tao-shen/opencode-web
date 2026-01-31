@@ -692,6 +692,16 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#F5F5F7',
     overflow: 'auto',
   },
+  code: {
+    padding: '20px',
+    margin: 0,
+    fontSize: '14px',
+    fontFamily: 'SF Mono, Monaco, monospace',
+    lineHeight: 1.6,
+    color: '#F5F5F7',
+    overflow: 'auto',
+    backgroundColor: 'transparent',
+  },
   codeInline: {
     backgroundColor: 'rgba(0, 122, 255, 0.1)',
     color: '#007AFF',

@@ -104,9 +104,10 @@ export default function TerminalPage() {
         setTerminalLoaded(true)
         term.write('\r\n\x1b[1;34m🚀 Initializing OpenCode Terminal...\x1b[0m\r\n')
 
-        // Use WSS for production (WebSocket Secure)
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-        const wsUrl = `${wsProtocol}//${window.location.host}/pty/connect`
+        // Connect directly to OpenCode server (Vercel doesn't support WebSocket)
+        const serverHost = '170.9.12.37'
+        const serverPort = '4096'
+        const wsUrl = `ws://${serverHost}:${serverPort}/pty/connect`
         
         setStatus('connecting')
         term.write(`\r\n\x1b[33mConnecting to ${wsUrl}...\x1b[0m\r\n`)
@@ -260,6 +261,7 @@ export default function TerminalPage() {
           </div>
           <div 
             ref={terminalRef} 
+            suppressHydrationWarning
             style={styles.terminalContainer}
           />
         </div>
