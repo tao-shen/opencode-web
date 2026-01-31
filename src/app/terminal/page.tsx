@@ -36,11 +36,18 @@ export default function TerminalPage() {
   const terminalRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState('initializing')
   const [terminalLoaded, setTerminalLoaded] = useState(false)
+  const [isClient, setIsClient] = useState(false)
   const termRef = useRef<any>(null)
   const wsRef = useRef<WebSocket | null>(null)
 
+  // Ensure we're on the client side
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
   // Dynamically import xterm to avoid SSR issues
   useEffect(() => {
+    if (!isClient || !terminalRef.current) return
     let isMounted = true
 
     const initTerminal = async () => {
@@ -104,8 +111,8 @@ export default function TerminalPage() {
         setTerminalLoaded(true)
         term.write('\r\n\x1b[1;34m🚀 Initializing OpenCode Terminal...\x1b[0m\r\n')
 
-        // Connect via Cloudflare Tunnel (WSS over HTTPS)
-        const tunnelUrl = 'conflict-brandon-its-loaded.trycloudflare.com'
+        // Connect via Cloudflare Tunnel with custom domain
+        const tunnelUrl = 'opencode.tao-shen.com'
         const wsUrl = `wss://${tunnelUrl}/pty/connect`
         
         setStatus('connecting')
@@ -200,6 +207,35 @@ export default function TerminalPage() {
 
   const reconnect = () => {
     window.location.reload()
+  }
+
+  // Show loading state during SSR
+  if (!isClient) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#000000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#F5F5F7',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif',
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid rgba(0, 122, 255, 0.2)',
+            borderTopColor: '#007AFF',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px',
+          }} />
+          <p style={{ color: '#86868B', fontSize: '14px' }}>Loading terminal...</p>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      </div>
+    )
   }
 
   return (
