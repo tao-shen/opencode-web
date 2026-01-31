@@ -108,7 +108,7 @@ export default function HomePage() {
             </a>
 
             {/* Card 2: Terminal */}
-            <a href={serverUrl} target="_blank" rel="noopener noreferrer" style={styles.actionCard}>
+            <Link href="/terminal" style={styles.actionCard}>
               <div style={styles.actionIcon}>
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="1.5">
                   <polyline points="4 17 10 11 4 5" />
@@ -118,17 +118,17 @@ export default function HomePage() {
               </div>
               <h3 style={styles.actionTitle}>Terminal</h3>
               <p style={styles.actionDesc}>
-                Interactive TUI terminal. Full command-line experience with AI assistance.
+                Embedded terminal with WebSocket connection to your server. Run OpenCode TUI directly in browser.
               </p>
               <div style={styles.actionLink}>
-                <span>Launch terminal</span>
+                <span>Launch embedded terminal</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                   <polyline points="15 3 21 3 21 9" />
                   <line x1="10" y1="14" x2="21" y2="3" />
                 </svg>
               </div>
-            </a>
+            </Link>
 
             {/* Card 3: API */}
             <Link href="/docs" style={styles.actionCard}>
@@ -547,7 +547,8 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     fontFamily: 'SF Mono, Monaco, "Cascadia Code", monospace',
     lineHeight: 1.6,
-    color: '#F5F5F7',
+    color: '#E6EDF3',
+    backgroundColor: '#0D1117',
     overflow: 'auto',
   },
   resources: {
