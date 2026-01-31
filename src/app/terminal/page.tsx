@@ -12,14 +12,14 @@ const getStatusBadgeStyle = (status: string): React.CSSProperties => ({
   backgroundColor: status === 'connected' ? 'rgba(52, 199, 89, 0.15)' 
                    : status === 'connecting' ? 'rgba(255, 149, 0, 0.15)'
                    : status === 'error' ? 'rgba(255, 69, 58, 0.15)'
-                   : 'rgba(255, 255, 255, 0.1)',
+                   : 'rgba(0, 122, 255, 0.15)',
   borderRadius: '20px',
   fontSize: '13px',
   fontWeight: 500,
   color: status === 'connected' ? '#34C759' 
          : status === 'connecting' ? '#FF9500'
          : status === 'error' ? '#FF453A'
-         : '#86868B',
+         : '#007AFF',
 })
 
 const getStatusDotStyle = (status: string): React.CSSProperties => ({
@@ -29,7 +29,7 @@ const getStatusDotStyle = (status: string): React.CSSProperties => ({
   backgroundColor: status === 'connected' ? '#34C759' 
                    : status === 'connecting' ? '#FF9500'
                    : status === 'error' ? '#FF453A'
-                   : '#86868B',
+                   : '#007AFF',
 })
 
 export default function TerminalPage() {
@@ -86,12 +86,10 @@ export default function TerminalPage() {
       return
     }
 
-    // For HTTPS pages (Vercel), we need WSS but self-signed certs won't work
-    // Solution: Show instructions to access via HTTP
     const isHttps = window.location.protocol === 'https:'
     
     if (isHttps) {
-      // Show HTTPS warning in terminal
+      // For HTTPS pages, show options
       const term = new (window as any).Terminal({
         cursorBlink: true,
         cursorStyle: 'block',
@@ -103,17 +101,18 @@ export default function TerminalPage() {
       term.open(terminalRef.current)
       termRef.current = term
       
-      term.write('\r\n\x1b[1;33m⚠️  HTTPS Page Detected\x1b[0m\r\n\r\n')
-      term.write('Due to browser security restrictions, HTTPS pages cannot connect\r\n')
-      term.write('to insecure WebSocket (ws://) endpoints.\r\n\r\n')
-      term.write('\x1b[1;32mOptions:\x1b[0m\r\n\r\n')
-      term.write('1. Click here to open terminal in new tab:\r\n')
-      term.write('   \x1b[4m\x1b[36mhttp://170.9.12.37:4096\x1b[0m\r\n\r\n')
-      term.write('2. Or use HTTP version of this page:\r\n')
-      term.write('   \x1b[4m\x1b[36mhttp://170.9.12.37:4096/pty/connect\x1b[0m\r\n\r\n')
-      term.write('\x1b[1;34mNote:\x1b[0m The WebSocket terminal requires HTTP connection.\r\n')
-      term.write('For full HTTPS support, set up a domain with SSL certificate.\r\n')
-      setStatus('warning')
+      term.write('\r\n\x1b[1;33m🌐 HTTPS Secure Connection\x1b[0m\r\n\r\n')
+      term.write('Your browser blocks insecure WebSocket connections.\r\n\r\n')
+      term.write('\x1b[1;32mAvailable Options:\x1b[0m\r\n\r\n')
+      term.write('\x1b[1;36m1.\x1b[0m Direct Access (no tunnel):\r\n')
+      term.write('   \x1b[4mhttp://170.9.12.37:4096\x1b[0m\r\n\r\n')
+      term.write('\x1b[1;36m2.\x1b[0m Public Tunnel URL:\r\n')
+      term.write('   \x1b[4mhttp://bore.pub:56047\x1b[0m\r\n\r\n')
+      term.write('\x1b[1;36m3.\x1b[0m For HTTPS + WebSocket support:\r\n')
+      term.write('   Configure a domain with SSL certificate.\r\n')
+      term.write('   See: /docs for setup instructions.\r\n')
+      term.write('\r\n\x1b[1;34mTip:\x1b[0m Option 1 or 2 provides full OpenCode TUI.\r\n')
+      setStatus('info')
       return
     }
 
@@ -266,6 +265,7 @@ export default function TerminalPage() {
             {status === 'connected' && 'Connected'}
             {status === 'disconnected' && 'Disconnected'}
             {status === 'error' && 'Error'}
+            {status === 'info' && 'Info'}
           </div>
         </div>
       </nav>
