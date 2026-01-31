@@ -138,21 +138,27 @@ export default function HomePage() {
   useEffect(() => {
     // Get server URL from environment or URL parameter
     const params = new URLSearchParams(window.location.search)
-    const server = params.get('server') || process.env.NEXT_PUBLIC_OPENCODE_URL || 'http://170.9.12.37:4096'
+    const server = params.get('server') || process.env.NEXT_PUBLIC_OPENCODE_URL || 'http://170.9.12.37'
     setServerUrl(server)
-    
-    // Check connection
+
+    // Check connection with timeout
     if (server) {
       setChecking(true)
-      fetch(`${server}/global/health`)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+      fetch(`${server}/global/health`, { signal: controller.signal })
         .then(res => res.ok)
         .then(setIsConnected)
         .catch(() => setIsConnected(false))
-        .finally(() => setChecking(false))
+        .finally(() => {
+          clearTimeout(timeoutId)
+          setChecking(false)
+        })
     }
   }, [])
 
-  const openCodeUrl = serverUrl || 'http://170.9.12.37:4096'
+  const openCodeUrl = serverUrl || 'http://170.9.12.37'
 
   return (
     <div style={styles.container}>
