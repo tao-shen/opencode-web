@@ -2,10 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Terminal } from '@xterm/xterm'
-import { AttachAddon } from '@xterm/addon-attach'
-import { FitAddon } from '@xterm/addon-fit'
-import '@xterm/xterm/css/xterm.css'
 
 // Status badge styles
 const getStatusBadgeStyle = (status: string): React.CSSProperties => ({
@@ -39,152 +35,171 @@ const getStatusDotStyle = (status: string): React.CSSProperties => ({
 export default function TerminalPage() {
   const terminalRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState('initializing')
-  const termRef = useRef<Terminal | null>(null)
+  const [terminalLoaded, setTerminalLoaded] = useState(false)
+  const termRef = useRef<any>(null)
   const wsRef = useRef<WebSocket | null>(null)
 
+  // Dynamically import xterm to avoid SSR issues
   useEffect(() => {
-    if (!terminalRef.current) return
+    let isMounted = true
 
-    // Initialize xterm.js
-    const term = new Terminal({
-      cursorBlink: true,
-      cursorStyle: 'bar' as const,
-      fontFamily: '"SF Mono", Monaco, "Cascadia Code", "Fira Code", Consolas, monospace',
-      fontSize: 14,
-      lineHeight: 1.2,
-      theme: {
-        background: '#000000',
-        foreground: '#00FF00',
-        cursor: '#00FF00',
-        cursorAccent: '#003300',
-        selectionBackground: '#333333',
-        black: '#000000',
-        red: '#FF5555',
-        green: '#50FA7B',
-        yellow: '#F1FA8C',
-        blue: '#BD93F9',
-        magenta: '#FF79C6',
-        cyan: '#8BE9FD',
-        white: '#F8F8F2',
-        brightBlack: '#6272A4',
-        brightRed: '#FF6E6E',
-        brightGreen: '#69FF94',
-        brightYellow: '#FFFFA5',
-        brightBlue: '#D6ACFF',
-        brightMagenta: '#FF92DF',
-        brightCyan: '#A4FFFF',
-        brightWhite: '#FFFFFF',
-      },
-      allowTransparency: true,
-      scrollback: 5000,
-    })
+    const initTerminal = async () => {
+      if (!terminalRef.current || !isMounted) return
 
-    const fitAddon = new FitAddon()
-    term.loadAddon(fitAddon)
-    term.open(terminalRef.current)
-    fitAddon.fit()
+      try {
+        // Dynamic import xterm.js
+        const xtermModule = await import('@xterm/xterm')
+        const attachAddonModule = await import('@xterm/addon-attach')
+        const fitAddonModule = await import('@xterm/addon-fit')
+        
+        const { Terminal } = xtermModule
+        const { AttachAddon } = attachAddonModule
+        const { FitAddon } = fitAddonModule
+        
+        // Create terminal instance
+        const term = new Terminal({
+          cursorBlink: true,
+          cursorStyle: 'bar' as const,
+          fontFamily: '"SF Mono", Monaco, "Cascadia Code", "Fira Code", Consolas, monospace',
+          fontSize: 14,
+          lineHeight: 1.2,
+          theme: {
+            background: '#000000',
+            foreground: '#00FF00',
+            cursor: '#00FF00',
+            cursorAccent: '#003300',
+            selectionBackground: '#333333',
+            black: '#000000',
+            red: '#FF5555',
+            green: '#50FA7B',
+            yellow: '#F1FA8C',
+            blue: '#BD93F9',
+            magenta: '#FF79C6',
+            cyan: '#8BE9FD',
+            white: '#F8F8F2',
+            brightBlack: '#6272A4',
+            brightRed: '#FF6E6E',
+            brightGreen: '#69FF94',
+            brightYellow: '#FFFFA5',
+            brightBlue: '#D6ACFF',
+            brightMagenta: '#FF92DF',
+            brightCyan: '#A4FFFF',
+            brightWhite: '#FFFFFF',
+          },
+          allowTransparency: true,
+          scrollback: 5000,
+        })
 
-    termRef.current = term
-    term.write('\r\n\x1b[1;34m🚀 Initializing OpenCode Terminal...\x1b[0m\r\n')
+        const fitAddon = new FitAddon()
+        term.loadAddon(fitAddon)
+        term.open(terminalRef.current)
+        fitAddon.fit()
 
-    // Determine WebSocket URL based on environment
-    const getWsUrl = (): string => {
-      // Check for tunnel URL first
-      if (typeof window !== 'undefined' && (window as any).OPENCODE_TUNNEL_URL) {
-        return (window as any).OPENCODE_TUNNEL_URL.replace('http', 'ws') + '/pty/connect'
+        if (!isMounted) {
+          term.dispose()
+          return
+        }
+
+        termRef.current = term
+        setTerminalLoaded(true)
+        term.write('\r\n\x1b[1;34m🚀 Initializing OpenCode Terminal...\x1b[0m\r\n')
+
+        // Use WSS for production (WebSocket Secure)
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+        const wsUrl = `${wsProtocol}//${window.location.host}/pty/connect`
+        
+        setStatus('connecting')
+        term.write(`\r\n\x1b[33mConnecting to ${wsUrl}...\x1b[0m\r\n`)
+
+        try {
+          const socket = new WebSocket(wsUrl)
+          wsRef.current = socket
+
+          socket.onopen = () => {
+            if (!isMounted) return
+            setStatus('connected')
+            term.write('\r\n\x1b[1;32m✅ Connected to OpenCode!\x1b[0m\r\n\r\n')
+            
+            const attachAddon = new AttachAddon(socket, {
+              bidirectional: true,
+            })
+            term.loadAddon(attachAddon)
+            
+            socket.send(JSON.stringify({
+              type: 'resize',
+              cols: term.cols,
+              rows: term.rows
+            }))
+            
+            term.write('\x1b[1;36mWelcome to OpenCode!\x1b[0m\r\n')
+            term.write('Type \x1b[1;33m/help\x1b[0m for available commands.\r\n\r\n')
+            term.focus()
+          }
+
+          socket.onmessage = (event) => {
+            if (!isMounted) return
+            try {
+              const msg = JSON.parse(event.data)
+              if (msg.type === 'output' && msg.data) {
+                term.write(msg.data)
+              }
+            } catch {
+              term.write(event.data)
+            }
+          }
+
+          socket.onclose = (event) => {
+            if (!isMounted) return
+            setStatus('disconnected')
+            term.write(`\r\n\x1b[1;31m❌ Connection closed (code: ${event.code})\x1b[0m\r\n`)
+            term.write('\r\n\x1b[33mTo reconnect, refresh the page or click "Reconnect"\x1b[0m\r\n')
+          }
+
+          socket.onerror = (error) => {
+            if (!isMounted) return
+            setStatus('error')
+            term.write('\r\n\x1b[1;31m❌ WebSocket error\x1b[0m\r\n')
+            console.error('WebSocket error:', error)
+          }
+
+          term.onResize(({ cols, rows }) => {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({ type: 'resize', cols, rows }))
+            }
+          })
+
+          // Handle browser resize
+          const handleResize = () => {
+            fitAddon.fit()
+          }
+          window.addEventListener('resize', handleResize)
+
+        } catch (error) {
+          if (!isMounted) return
+          setStatus('error')
+          term.write(`\r\n\x1b[1;31m❌ Failed to connect: ${error}\x1b[0m\r\n`)
+        }
+      } catch (error) {
+        console.error('Failed to load xterm:', error)
+        setStatus('error')
       }
-      // Default to local server
-      return 'ws://170.9.12.37:4096/pty/connect'
     }
 
-    const wsUrl = getWsUrl()
-    
-    setStatus('connecting')
-    term.write(`\r\n\x1b[33mConnecting to ${wsUrl}...\x1b[0m\r\n`)
+    initTerminal()
 
-    try {
-      const socket = new WebSocket(wsUrl)
-      wsRef.current = socket
-
-      socket.onopen = () => {
-        setStatus('connected')
-        term.write('\r\n\x1b[1;32m✅ Connected to OpenCode!\x1b[0m\r\n\r\n')
-        
-        // Load attach addon for bidirectional communication
-        const attachAddon = new AttachAddon(socket, {
-          bidirectional: true,
-        })
-        term.loadAddon(attachAddon)
-        
-        // Send terminal size
-        socket.send(JSON.stringify({
-          type: 'resize',
-          cols: term.cols,
-          rows: term.rows
-        }))
-        
-        term.write('\x1b[1;36mWelcome to OpenCode!\x1b[0m\r\n')
-        term.write('Type \x1b[1;33m/help\x1b[0m for available commands.\r\n\r\n')
-        term.focus()
+    return () => {
+      isMounted = false
+      if (wsRef.current) {
+        wsRef.current.close()
       }
-
-      socket.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data)
-          if (msg.type === 'output' && msg.data) {
-            term.write(msg.data)
-          }
-        } catch {
-          // Handle raw data
-          term.write(event.data)
-        }
+      if (termRef.current) {
+        termRef.current.dispose()
       }
-
-      socket.onclose = (event) => {
-        setStatus('disconnected')
-        term.write(`\r\n\x1b[1;31m❌ Connection closed (code: ${event.code})\x1b[0m\r\n`)
-        term.write('\r\n\x1b[33mTo reconnect, refresh the page or click "Reconnect"\x1b[0m\r\n')
-      }
-
-      socket.onerror = (error) => {
-        setStatus('error')
-        term.write('\r\n\x1b[1;31m❌ WebSocket error\x1b[0m\r\n')
-        console.error('WebSocket error:', error)
-      }
-
-      // Handle terminal resize
-      term.onResize(({ cols, rows }) => {
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-            type: 'resize',
-            cols,
-            rows
-          }))
-        }
-      })
-
-      // Handle browser resize
-      const handleResize = () => {
-        fitAddon.fit()
-      }
-      window.addEventListener('resize', handleResize)
-
-      return () => {
-        window.removeEventListener('resize', handleResize)
-        socket.close()
-        term.dispose()
-      }
-    } catch (error) {
-      setStatus('error')
-      term.write(`\r\n\x1b[1;31m❌ Failed to connect: ${error}\x1b[0m\r\n`)
     }
   }, [])
 
   const reconnect = () => {
-    if (termRef.current && wsRef.current) {
-      wsRef.current.close()
-      window.location.reload()
-    }
+    window.location.reload()
   }
 
   return (
