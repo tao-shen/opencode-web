@@ -118,16 +118,25 @@ export default function HomePage() {
               </div>
               <h3 style={styles.actionTitle}>Terminal</h3>
               <p style={styles.actionDesc}>
-                Embedded terminal with WebSocket connection to your server. Run OpenCode TUI directly in browser.
+                Embedded terminal with WebSocket connection. Click for embedded view, or access directly via HTTP.
               </p>
               <div style={styles.actionLink}>
-                <span>Launch embedded terminal</span>
+                <span>Open terminal</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                   <polyline points="15 3 21 3 21 9" />
                   <line x1="10" y1="14" x2="21" y2="3" />
                 </svg>
               </div>
+              <a 
+                href="http://170.9.12.37:4096" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={styles.directLink}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Or use direct HTTP access →
+              </a>
             </Link>
 
             {/* Card 3: API */}
@@ -585,6 +594,16 @@ const styles: Record<string, React.CSSProperties> = {
   resourceDesc: {
     fontSize: '13px',
     color: '#86868B',
+  },
+  directLink: {
+    display: 'block',
+    marginTop: '16px',
+    paddingTop: '16px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+    color: '#007AFF',
+    fontSize: '13px',
+    textDecoration: 'none',
+    textAlign: 'center',
   },
   footer: {
     padding: '40px',

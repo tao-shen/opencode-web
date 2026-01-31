@@ -86,6 +86,37 @@ export default function TerminalPage() {
       return
     }
 
+    // For HTTPS pages (Vercel), we need WSS but self-signed certs won't work
+    // Solution: Show instructions to access via HTTP
+    const isHttps = window.location.protocol === 'https:'
+    
+    if (isHttps) {
+      // Show HTTPS warning in terminal
+      const term = new (window as any).Terminal({
+        cursorBlink: true,
+        cursorStyle: 'block',
+        fontFamily: '"SF Mono", Monaco, monospace',
+        fontSize: 14,
+        lineHeight: 1.2,
+        theme: { background: '#000000', foreground: '#00FF00' },
+      })
+      term.open(terminalRef.current)
+      termRef.current = term
+      
+      term.write('\r\n\x1b[1;33m⚠️  HTTPS Page Detected\x1b[0m\r\n\r\n')
+      term.write('Due to browser security restrictions, HTTPS pages cannot connect\r\n')
+      term.write('to insecure WebSocket (ws://) endpoints.\r\n\r\n')
+      term.write('\x1b[1;32mOptions:\x1b[0m\r\n\r\n')
+      term.write('1. Click here to open terminal in new tab:\r\n')
+      term.write('   \x1b[4m\x1b[36mhttp://170.9.12.37:4096\x1b[0m\r\n\r\n')
+      term.write('2. Or use HTTP version of this page:\r\n')
+      term.write('   \x1b[4m\x1b[36mhttp://170.9.12.37:4096/pty/connect\x1b[0m\r\n\r\n')
+      term.write('\x1b[1;34mNote:\x1b[0m The WebSocket terminal requires HTTP connection.\r\n')
+      term.write('For full HTTPS support, set up a domain with SSL certificate.\r\n')
+      setStatus('warning')
+      return
+    }
+
     const serverUrl = 'http://170.9.12.37:4096'
     const wsUrl = serverUrl.replace('http', 'ws') + '/pty/connect'
 
