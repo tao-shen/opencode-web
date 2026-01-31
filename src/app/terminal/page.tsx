@@ -2,8 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { Terminal } from '@xterm/xterm'
+import { AttachAddon } from '@xterm/addon-attach'
+import { FitAddon } from '@xterm/addon-fit'
+import '@xterm/xterm/css/xterm.css'
 
-// Status badge styles (outside styles object to avoid TypeScript errors)
+// Status badge styles
 const getStatusBadgeStyle = (status: string): React.CSSProperties => ({
   display: 'flex',
   alignItems: 'center',
@@ -34,95 +38,17 @@ const getStatusDotStyle = (status: string): React.CSSProperties => ({
 
 export default function TerminalPage() {
   const terminalRef = useRef<HTMLDivElement>(null)
-  const [status, setStatus] = useState('connecting')
-  const [xtermLoaded, setXtermLoaded] = useState(false)
-  const termRef = useRef<any>(null)
+  const [status, setStatus] = useState('initializing')
+  const termRef = useRef<Terminal | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
-    // Dynamically import xterm.js
-    const loadXterm = async () => {
-      try {
-        const xtermStyles = document.createElement('link')
-        xtermStyles.rel = 'stylesheet'
-        xtermStyles.href = 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css'
-        document.head.appendChild(xtermStyles)
+    if (!terminalRef.current) return
 
-        const xtermScript = document.createElement('script')
-        xtermScript.src = 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js'
-        xtermScript.onload = () => {
-          setXtermLoaded(true)
-          initTerminal()
-        }
-        document.body.appendChild(xtermScript)
-
-        const xtermFitScript = document.createElement('script')
-        xtermFitScript.src = 'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js'
-        xtermFitScript.onload = () => {
-          console.log('xterm-fit loaded')
-        }
-        document.body.appendChild(xtermFitScript)
-      } catch (err) {
-        console.error('Failed to load xterm.js:', err)
-        setStatus('error')
-      }
-    }
-
-    loadXterm()
-
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close()
-      }
-      if (termRef.current) {
-        termRef.current.dispose()
-      }
-    }
-  }, [])
-
-  const initTerminal = () => {
-    if (!terminalRef.current || !(window as any).Terminal) {
-      console.error('xterm not loaded')
-      return
-    }
-
-    const isHttps = window.location.protocol === 'https:'
-    
-    if (isHttps) {
-      // For HTTPS pages, show options
-      const term = new (window as any).Terminal({
-        cursorBlink: true,
-        cursorStyle: 'block',
-        fontFamily: '"SF Mono", Monaco, monospace',
-        fontSize: 14,
-        lineHeight: 1.2,
-        theme: { background: '#000000', foreground: '#00FF00' },
-      })
-      term.open(terminalRef.current)
-      termRef.current = term
-      
-      term.write('\r\n\x1b[1;33m🌐 HTTPS Secure Connection\x1b[0m\r\n\r\n')
-      term.write('Your browser blocks insecure WebSocket connections.\r\n\r\n')
-      term.write('\x1b[1;32mAvailable Options:\x1b[0m\r\n\r\n')
-      term.write('\x1b[1;36m1.\x1b[0m Direct Access (no tunnel):\r\n')
-      term.write('   \x1b[4mhttp://170.9.12.37:4096\x1b[0m\r\n\r\n')
-      term.write('\x1b[1;36m2.\x1b[0m Public Tunnel URL:\r\n')
-      term.write('   \x1b[4mhttp://bore.pub:56047\x1b[0m\r\n\r\n')
-      term.write('\x1b[1;36m3.\x1b[0m For HTTPS + WebSocket support:\r\n')
-      term.write('   Configure a domain with SSL certificate.\r\n')
-      term.write('   See: /docs for setup instructions.\r\n')
-      term.write('\r\n\x1b[1;34mTip:\x1b[0m Option 1 or 2 provides full OpenCode TUI.\r\n')
-      setStatus('info')
-      return
-    }
-
-    const serverUrl = 'http://170.9.12.37:4096'
-    const wsUrl = serverUrl.replace('http', 'ws') + '/pty/connect'
-
-    // Create xterm instance
-    const term = new (window as any).Terminal({
+    // Initialize xterm.js
+    const term = new Terminal({
       cursorBlink: true,
-      cursorStyle: 'block',
+      cursorStyle: 'bar' as const,
       fontFamily: '"SF Mono", Monaco, "Cascadia Code", "Fira Code", Consolas, monospace',
       fontSize: 14,
       lineHeight: 1.2,
@@ -130,103 +56,134 @@ export default function TerminalPage() {
         background: '#000000',
         foreground: '#00FF00',
         cursor: '#00FF00',
+        cursorAccent: '#003300',
         selectionBackground: '#333333',
         black: '#000000',
         red: '#FF5555',
-        green: '#00FF00',
-        yellow: '#FFFF55',
-        blue: '#5555FF',
-        magenta: '#FF55FF',
-        cyan: '#55FFFF',
-        white: '#AAAAAA',
-        brightBlack: '#555555',
-        brightRed: '#FF8888',
-        brightGreen: '#88FF88',
-        brightYellow: '#FFFF88',
-        brightBlue: '#8888FF',
-        brightMagenta: '#FF88FF',
-        brightCyan: '#88FFFF',
+        green: '#50FA7B',
+        yellow: '#F1FA8C',
+        blue: '#BD93F9',
+        magenta: '#FF79C6',
+        cyan: '#8BE9FD',
+        white: '#F8F8F2',
+        brightBlack: '#6272A4',
+        brightRed: '#FF6E6E',
+        brightGreen: '#69FF94',
+        brightYellow: '#FFFFA5',
+        brightBlue: '#D6ACFF',
+        brightMagenta: '#FF92DF',
+        brightCyan: '#A4FFFF',
         brightWhite: '#FFFFFF',
       },
       allowTransparency: true,
-      scrollback: 1000,
+      scrollback: 5000,
     })
 
+    const fitAddon = new FitAddon()
+    term.loadAddon(fitAddon)
     term.open(terminalRef.current)
+    fitAddon.fit()
+
     termRef.current = term
+    term.write('\r\n\x1b[1;34m🚀 Initializing OpenCode Terminal...\x1b[0m\r\n')
 
-    // Initial welcome message
-    term.write('\r\n\x1b[1;32m🚀 Connecting to OpenCode...\x1b[0m\r\n')
+    // Determine WebSocket URL based on environment
+    const getWsUrl = (): string => {
+      // Check for tunnel URL first
+      if (typeof window !== 'undefined' && (window as any).OPENCODE_TUNNEL_URL) {
+        return (window as any).OPENCODE_TUNNEL_URL.replace('http', 'ws') + '/pty/connect'
+      }
+      // Default to local server
+      return 'ws://170.9.12.37:4096/pty/connect'
+    }
 
-    // Connect to WebSocket
+    const wsUrl = getWsUrl()
+    
+    setStatus('connecting')
+    term.write(`\r\n\x1b[33mConnecting to ${wsUrl}...\x1b[0m\r\n`)
+
     try {
-      const ws = new WebSocket(wsUrl)
-      wsRef.current = ws
+      const socket = new WebSocket(wsUrl)
+      wsRef.current = socket
 
-      ws.onopen = () => {
+      socket.onopen = () => {
         setStatus('connected')
-        term.write('\r\n\x1b[1;32m✅ Connected! Starting OpenCode...\x1b[0m\r\n\r\n')
-
-        // Send command to start opencode
-        setTimeout(() => {
-          ws.send(JSON.stringify({
-            type: 'input',
-            data: 'opencode\r\n'
-          }))
-        }, 500)
+        term.write('\r\n\x1b[1;32m✅ Connected to OpenCode!\x1b[0m\r\n\r\n')
+        
+        // Load attach addon for bidirectional communication
+        const attachAddon = new AttachAddon(socket, {
+          bidirectional: true,
+        })
+        term.loadAddon(attachAddon)
+        
+        // Send terminal size
+        socket.send(JSON.stringify({
+          type: 'resize',
+          cols: term.cols,
+          rows: term.rows
+        }))
+        
+        term.write('\x1b[1;36mWelcome to OpenCode!\x1b[0m\r\n')
+        term.write('Type \x1b[1;33m/help\x1b[0m for available commands.\r\n\r\n')
+        term.focus()
       }
 
-      ws.onmessage = (event) => {
+      socket.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data)
           if (msg.type === 'output' && msg.data) {
             term.write(msg.data)
           }
-        } catch (e) {
-          // Handle raw output
+        } catch {
+          // Handle raw data
           term.write(event.data)
         }
       }
 
-      ws.onclose = () => {
+      socket.onclose = (event) => {
         setStatus('disconnected')
-        term.write('\r\n\x1b[1;31m❌ Disconnected from server\x1b[0m\r\n')
+        term.write(`\r\n\x1b[1;31m❌ Connection closed (code: ${event.code})\x1b[0m\r\n`)
+        term.write('\r\n\x1b[33mTo reconnect, refresh the page or click "Reconnect"\x1b[0m\r\n')
       }
 
-      ws.onerror = (err) => {
-        console.error('WebSocket error:', err)
+      socket.onerror = (error) => {
         setStatus('error')
-        term.write('\r\n\x1b[1;31m❌ Connection error\x1b[0m\r\n')
+        term.write('\r\n\x1b[1;31m❌ WebSocket error\x1b[0m\r\n')
+        console.error('WebSocket error:', error)
       }
 
-      // Handle terminal input
-      term.onData((data: string) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            type: 'input',
-            data: data
+      // Handle terminal resize
+      term.onResize(({ cols, rows }) => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'resize',
+            cols,
+            rows
           }))
         }
       })
 
-      // Fit terminal to container
-      setTimeout(() => {
-        try {
-          const fitAddon = (window as any).Terminal?.Addon?.Fit
-          if (fitAddon && term.element) {
-            const fit = new fitAddon()
-            fit.attach(term)
-            fit.fit()
-          }
-        } catch (e) {
-          console.log('Fit addon not available, using default sizing')
-        }
-      }, 100)
+      // Handle browser resize
+      const handleResize = () => {
+        fitAddon.fit()
+      }
+      window.addEventListener('resize', handleResize)
 
-    } catch (err) {
-      console.error('Failed to connect:', err)
+      return () => {
+        window.removeEventListener('resize', handleResize)
+        socket.close()
+        term.dispose()
+      }
+    } catch (error) {
       setStatus('error')
-      term.write('\r\n\x1b[1;31m❌ Failed to connect to server\x1b[0m\r\n')
+      term.write(`\r\n\x1b[1;31m❌ Failed to connect: ${error}\x1b[0m\r\n`)
+    }
+  }, [])
+
+  const reconnect = () => {
+    if (termRef.current && wsRef.current) {
+      wsRef.current.close()
+      window.location.reload()
     }
   }
 
@@ -263,10 +220,15 @@ export default function TerminalPage() {
             <span style={getStatusDotStyle(status)}></span>
             {status === 'connecting' && 'Connecting...'}
             {status === 'connected' && 'Connected'}
-            {status === 'disconnected' && 'Disconnected'}
+            {status === 'disconnected' && 'Reconnect'}
             {status === 'error' && 'Error'}
-            {status === 'info' && 'Info'}
+            {status === 'initializing' && 'Initializing...'}
           </div>
+          {(status === 'disconnected' || status === 'error') && (
+            <button style={styles.reconnectButton} onClick={reconnect}>
+              Reconnect
+            </button>
+          )}
         </div>
       </nav>
 
@@ -287,25 +249,33 @@ export default function TerminalPage() {
           />
         </div>
 
-        {/* Help Text */}
+        {/* Help Section */}
         <div style={styles.helpSection}>
-          <h3 style={styles.helpTitle}>Terminal Controls</h3>
+          <h3 style={styles.helpTitle}>Keyboard Shortcuts</h3>
           <div style={styles.helpGrid}>
             <div style={styles.helpItem}>
               <kbd style={styles.kbd}>Ctrl + C</kbd>
-              <span style={styles.helpDesc}>Interrupt current command</span>
+              <span style={styles.helpDesc}>Interrupt</span>
             </div>
             <div style={styles.helpItem}>
               <kbd style={styles.kbd}>Ctrl + D</kbd>
-              <span style={styles.helpDesc}>Exit OpenCode</span>
+              <span style={styles.helpDesc}>Exit</span>
             </div>
             <div style={styles.helpItem}>
               <kbd style={styles.kbd}>Ctrl + L</kbd>
-              <span style={styles.helpDesc}>Clear screen</span>
+              <span style={styles.helpDesc}>Clear</span>
             </div>
             <div style={styles.helpItem}>
               <kbd style={styles.kbd}>↑ / ↓</kbd>
-              <span style={styles.helpDesc}>Command history</span>
+              <span style={styles.helpDesc}>History</span>
+            </div>
+            <div style={styles.helpItem}>
+              <kbd style={styles.kbd}>Tab</kbd>
+              <span style={styles.helpDesc}>Autocomplete</span>
+            </div>
+            <div style={styles.helpItem}>
+              <kbd style={styles.kbd}>Ctrl + R</kbd>
+              <span style={styles.helpDesc}>Search</span>
             </div>
           </div>
         </div>
@@ -374,6 +344,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     transition: 'color 0.2s ease',
   },
+  reconnectButton: {
+    padding: '6px 16px',
+    backgroundColor: '#007AFF',
+    color: '#FFFFFF',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '13px',
+    fontWeight: 500,
+    cursor: 'pointer',
+  },
   main: {
     paddingTop: '64px',
     maxWidth: '1200px',
@@ -411,7 +391,7 @@ const styles: Record<string, React.CSSProperties> = {
   terminalContainer: {
     padding: '16px',
     minHeight: '500px',
-    maxHeight: '600px',
+    maxHeight: '70vh',
     overflow: 'auto',
     backgroundColor: '#000000',
   },
@@ -429,7 +409,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   helpGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
     gap: '16px',
   },
   helpItem: {
