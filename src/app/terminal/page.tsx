@@ -104,10 +104,8 @@ export default function TerminalPage() {
         setTerminalLoaded(true)
         term.write('\r\n\x1b[1;34m🚀 Initializing OpenCode Terminal...\x1b[0m\r\n')
 
-        // Connect directly to OpenCode server (Vercel doesn't support WebSocket)
-        const serverHost = '170.9.12.37'
-        const serverPort = '4096'
-        const wsUrl = `ws://${serverHost}:${serverPort}/pty/connect`
+        // Connect via nginx proxy with WSS (SSL terminates at nginx)
+        const wsUrl = `wss://oracle.tao-shen.com/pty/connect`
         
         setStatus('connecting')
         term.write(`\r\n\x1b[33mConnecting to ${wsUrl}...\x1b[0m\r\n`)
