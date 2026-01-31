@@ -1,10 +1,18 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Terminal, Plus, Trash2, Copy, Share2, Settings, ChevronDown, Send, Loader2, FileCode, Folder, Command } from 'lucide-react'
-import type { Session } from '../types'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
+const API_BASE = typeof window === 'undefined' 
+  ? '' 
+  : window.location.origin + '/api'
+
+interface Session {
+  id: string
+  slug: string
+  title: string
+  status: string
+  time: { created: number; updated: number }
+}
 
 interface Message {
   id: string
@@ -12,14 +20,293 @@ interface Message {
   content: string
   agent?: string
   modelID?: string
-  tokens?: {
-    input: number
-    output: number
-    reasoning: number
-    cache: number
-  }
-  cost?: number
   timestamp: number
+}
+
+const styles: Record<string, React.CSSProperties> = {
+  container: {
+    display: 'flex',
+    height: '100vh',
+    width: '100vw',
+    backgroundColor: '#0f172a',
+    color: '#e2e8f0',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  },
+  sidebar: {
+    width: '256px',
+    backgroundColor: '#1e293b',
+    borderRight: '1px solid #334155',
+    display: 'flex',
+    flexDirection: 'column',
+    transition: 'width 0.2s',
+  },
+  sidebarCollapsed: {
+    width: '48px',
+  },
+  sidebarHeader: {
+    padding: '12px',
+    borderBottom: '1px solid #334155',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sidebarTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontWeight: 600,
+    fontSize: '14px',
+  },
+  newSessionBtn: {
+    width: 'calc(100% - 24px)',
+    margin: '12px',
+    padding: '10px 16px',
+    backgroundColor: '#3b82f6',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 500,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+  },
+  sessionList: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '8px',
+  },
+  sessionItem: {
+    padding: '10px 12px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    marginBottom: '4px',
+    fontSize: '14px',
+    transition: 'background-color 0.15s',
+  },
+  sessionItemActive: {
+    backgroundColor: '#3b82f6',
+    color: '#ffffff',
+  },
+  sessionItemInactive: {
+    backgroundColor: 'transparent',
+  },
+  main: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    minWidth: 0,
+  },
+  header: {
+    height: '56px',
+    borderBottom: '1px solid #334155',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0 16px',
+    backgroundColor: '#1e293b',
+  },
+  headerTitle: {
+    fontSize: '16px',
+    fontWeight: 600,
+  },
+  headerActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  modelSelector: {
+    position: 'relative' as const,
+  },
+  modelBtn: {
+    padding: '6px 12px',
+    backgroundColor: '#334155',
+    border: 'none',
+    borderRadius: '6px',
+    color: '#e2e8f0',
+    cursor: 'pointer',
+    fontSize: '13px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  modelDropdown: {
+    position: 'absolute' as const,
+    top: '100%',
+    right: 0,
+    marginTop: '4px',
+    backgroundColor: '#1e293b',
+    border: '1px solid #334155',
+    borderRadius: '8px',
+    padding: '8px 0',
+    minWidth: '192px',
+    zIndex: 50,
+    boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+  },
+  modelSection: {
+    padding: '8px 12px',
+    fontSize: '11px',
+    textTransform: 'uppercase' as const,
+    color: '#94a3b8',
+    fontWeight: 600,
+    letterSpacing: '0.05em',
+  },
+  modelOption: {
+    padding: '8px 16px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    display: 'block',
+    width: '100%',
+    textAlign: 'left' as const,
+    border: 'none',
+    backgroundColor: 'transparent',
+    color: '#e2e8f0',
+  },
+  iconBtn: {
+    padding: '8px',
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    color: '#94a3b8',
+  },
+  messagesArea: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '24px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '16px',
+  },
+  welcomeScreen: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#94a3b8',
+    textAlign: 'center' as const,
+  },
+  welcomeIcon: {
+    width: '64px',
+    height: '64px',
+    marginBottom: '16px',
+    opacity: 0.5,
+  },
+  welcomeTitle: {
+    fontSize: '20px',
+    fontWeight: 600,
+    marginBottom: '8px',
+    color: '#f1f5f9',
+  },
+  welcomeText: {
+    maxWidth: '400px',
+    lineHeight: 1.6,
+  },
+  messageRow: {
+    display: 'flex',
+    gap: '12px',
+    maxWidth: '70%',
+  },
+  messageRowUser: {
+    marginLeft: 'auto',
+    flexDirection: 'row-reverse' as const,
+  },
+  avatar: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '14px',
+    fontWeight: 600,
+    flexShrink: 0,
+  },
+  avatarUser: {
+    backgroundColor: '#3b82f6',
+    color: '#ffffff',
+  },
+  avatarAssistant: {
+    backgroundColor: '#334155',
+    color: '#e2e8f0',
+  },
+  messageBubble: {
+    padding: '12px 16px',
+    borderRadius: '12px',
+    fontSize: '14px',
+    lineHeight: 1.6,
+  },
+  bubbleUser: {
+    backgroundColor: '#3b82f6',
+    color: '#ffffff',
+  },
+  bubbleAssistant: {
+    backgroundColor: '#1e293b',
+    color: '#e2e8f0',
+  },
+  inputArea: {
+    padding: '16px 24px',
+    borderTop: '1px solid #334155',
+    backgroundColor: '#1e293b',
+  },
+  inputWrapper: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    gap: '12px',
+  },
+  input: {
+    flex: 1,
+    padding: '12px 16px',
+    backgroundColor: '#0f172a',
+    border: '1px solid #334155',
+    borderRadius: '12px',
+    color: '#e2e8f0',
+    fontSize: '14px',
+    fontFamily: 'inherit',
+    resize: 'none' as const,
+    outline: 'none',
+    minHeight: '48px',
+    maxHeight: '160px',
+  },
+  sendBtn: {
+    padding: '12px 16px',
+    backgroundColor: '#3b82f6',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toolsInfo: {
+    display: 'flex',
+    gap: '16px',
+    marginTop: '8px',
+    fontSize: '12px',
+    color: '#64748b',
+  },
+  toolTag: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  loadingSpinner: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  loadingDots: {
+    display: 'inline-block',
+    width: '8px',
+    height: '8px',
+    backgroundColor: '#3b82f6',
+    borderRadius: '50%',
+    animation: 'pulse 1.4s ease-in-out infinite',
+  },
 }
 
 export default function HomePage() {
@@ -34,8 +321,6 @@ export default function HomePage() {
   const [showModelSelector, setShowModelSelector] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
-  const eventSourceRef = useRef<EventSource | null>(null)
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -45,22 +330,9 @@ export default function HomePage() {
     scrollToBottom()
   }, [messages, scrollToBottom])
 
-  // Load sessions on mount
-  useEffect(() => {
-    loadSessions()
-  }, [])
-
-  // Connect to SSE when session changes
   useEffect(() => {
     if (currentSession) {
-      connectToEventStream(currentSession.id)
       loadMessages(currentSession.id)
-    }
-    
-    return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close()
-      }
     }
   }, [currentSession?.id])
 
@@ -69,7 +341,7 @@ export default function HomePage() {
       const response = await fetch(`${API_BASE}/session`)
       const data = await response.json()
       if (data.success) {
-        setSessions(data.data.items)
+        setSessions(data.data.items || [])
       }
     } catch (error) {
       console.error('Failed to load sessions:', error)
@@ -81,58 +353,17 @@ export default function HomePage() {
       const response = await fetch(`${API_BASE}/session/${sessionID}/messages`)
       const data = await response.json()
       if (data.success) {
-        const msgs: Message[] = data.data.items.map((m: any) => ({
+        const msgs: Message[] = (data.data.items || []).map((m: any) => ({
           id: m.id,
           role: m.role,
-          content: 'content' in m ? m.content : '',
+          content: m.content || '',
           timestamp: m.time,
-          agent: 'agent' in m ? m.agent : undefined,
-          modelID: 'modelID' in m ? m.modelID : undefined,
-          tokens: 'tokens' in m ? m.tokens : undefined,
-          cost: 'cost' in m ? m.cost : undefined,
+          agent: m.agent,
         }))
         setMessages(msgs)
       }
     } catch (error) {
       console.error('Failed to load messages:', error)
-    }
-  }
-
-  const connectToEventStream = (sessionID: string) => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close()
-    }
-
-    const eventSource = new EventSource(`${API_BASE}/sse/session/${sessionID}`)
-    eventSourceRef.current = eventSource
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        
-        if (data.event === 'message.created') {
-          const msg = data.data.message
-          setMessages(prev => {
-            if (prev.find(m => m.id === msg.id)) {
-              return prev
-            }
-            return [...prev, {
-              id: msg.id,
-              role: msg.role,
-              content: msg.content || '',
-              timestamp: msg.time,
-              agent: msg.agent,
-            }]
-          })
-        }
-      } catch (error) {
-        console.error('Failed to parse SSE message:', error)
-      }
-    }
-
-    eventSource.onerror = (error) => {
-      console.error('SSE error:', error)
-      eventSource.close()
     }
   }
 
@@ -185,19 +416,15 @@ export default function HomePage() {
       const data = await response.json()
       
       if (data.success) {
-        // Add placeholder for assistant response
         const assistantMessage: Message = {
           id: data.data.messageID,
           role: 'assistant',
           content: '',
           timestamp: Date.now(),
           agent: 'general',
-          modelID: model.modelID,
         }
         setMessages(prev => [...prev, assistantMessage])
         
-        // In production, this would trigger actual AI processing
-        // For demo, simulate a response
         await simulateAIResponse(assistantMessage.id, userMessage.content)
       }
     } catch (error) {
@@ -207,10 +434,11 @@ export default function HomePage() {
   }
 
   const simulateAIResponse = async (messageID: string, prompt: string) => {
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
     const responses = [
-      `I've analyzed your request: "${prompt}"\n\nLet me help you with that. Here's what I can do:\n\n1. Understand your requirements\n2. Plan the implementation\n3. Write clean, efficient code\n4. Test and verify the solution`,
-      `Based on your input, I understand you're looking to:\n\n• Process the request efficiently\n• Handle edge cases properly\n• Maintain clean code structure\n\nLet me work on this for you.`,
-      `Great question! Here's my approach:\n\n1. First, I'll break down the problem\n2. Identify the key components\n3. Implement the solution step by step\n4. Review and optimize\n\nStarting the implementation...`,
+      `I understand you're asking about: "${prompt}"\n\nThis is a simulated AI response. Configure your API keys to enable real AI responses.`,
+      `Based on your request, here's what I can help you with:\n\n1. Analyzing your input\n2. Processing the context\n3. Generating relevant responses`,
     ]
 
     const response = responses[Math.floor(Math.random() * responses.length)]
@@ -236,181 +464,177 @@ export default function HomePage() {
     }
   }
 
-  const formatTimestamp = (timestamp: number) => {
-    const date = new Date(timestamp)
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-  }
+  const models = [
+    { provider: 'OpenAI', models: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'] },
+    { provider: 'Anthropic', models: ['claude-sonnet-4-20250506', 'claude-opus-4-20250506'] },
+  ]
 
   return (
-    <div className="flex h-screen w-full">
+    <div style={styles.container}>
       {/* Sidebar */}
-      <div className={`${sidebarCollapsed ? 'w-12' : 'w-64'} sidebar flex flex-col transition-all duration-200`}>
-        {/* Sidebar header */}
-        <div className="p-3 border-b border-[var(--border)] flex items-center justify-between">
+      <div style={{ ...styles.sidebar, ...(sidebarCollapsed ? styles.sidebarCollapsed : {}) }}>
+        <div style={styles.sidebarHeader}>
           {!sidebarCollapsed && (
-            <div className="flex items-center gap-2">
-              <Terminal className="w-5 h-5 text-[var(--primary)]" />
-              <span className="font-semibold">OpenCode</span>
+            <div style={styles.sidebarTitle}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+              </svg>
+              OpenCode
             </div>
           )}
-          <button
+          <button 
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-1 hover:bg-[var(--muted)] rounded"
+            style={{ ...styles.iconBtn, transform: sidebarCollapsed ? 'rotate(180deg)' : 'none' }}
           >
-            <ChevronDown className={`w-4 h-4 transition-transform ${sidebarCollapsed ? '-rotate-90' : ''}`} />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
           </button>
         </div>
 
-        {/* New session button */}
         {!sidebarCollapsed && (
-          <div className="p-3">
-            <button
-              onClick={createSession}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 bg-[var(--primary)] text-[var(--primary-foreground)] py-2 px-4 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
+          <>
+            <button onClick={createSession} disabled={isLoading} style={styles.newSessionBtn}>
               {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <span style={styles.loadingSpinner}>
+                  <span style={styles.loadingDots}></span>
+                </span>
               ) : (
                 <>
-                  <Plus className="w-4 h-4" />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
                   New Session
                 </>
               )}
             </button>
-          </div>
-        )}
 
-        {/* Session list */}
-        {!sidebarCollapsed && (
-          <div className="flex-1 overflow-y-auto">
-            <div className="px-3 py-2">
-              <h3 className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">
+            <div style={styles.sessionList}>
+              <div style={{ padding: '8px 12px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>
                 Sessions
-              </h3>
-              <div className="space-y-1">
-                {sessions.map(session => (
-                  <button
-                    key={session.id}
-                    onClick={() => setCurrentSession(session)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                      currentSession?.id === session.id
-                        ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
-                        : 'hover:bg-[var(--muted)]'
-                    }`}
-                  >
-                    <div className="truncate">{session.title}</div>
-                    <div className="text-xs opacity-70">
-                      {formatTimestamp(session.time.updated)}
-                    </div>
-                  </button>
-                ))}
               </div>
+              {sessions.map(session => (
+                <div
+                  key={session.id}
+                  onClick={() => setCurrentSession(session)}
+                  style={{
+                    ...styles.sessionItem,
+                    ...(currentSession?.id === session.id ? styles.sessionItemActive : styles.sessionItemInactive),
+                  }}
+                >
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {session.title}
+                  </div>
+                  <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
+                    {formatTime(session.time.updated)}
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
 
-        {/* Sidebar footer */}
-        {!sidebarCollapsed && (
-          <div className="p-3 border-t border-[var(--border)]">
-            <button className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--muted)] rounded-lg">
-              <Settings className="w-4 h-4" />
-              Settings
-            </button>
-          </div>
+            <div style={{ padding: '12px', borderTop: '1px solid #334155' }}>
+              <button style={{ width: '100%', padding: '10px 12px', backgroundColor: 'transparent', border: 'none', borderRadius: '8px', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                Settings
+              </button>
+            </div>
+          </>
         )}
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col">
+      {/* Main Content */}
+      <div style={styles.main}>
         {/* Header */}
-        <div className="h-14 border-b border-[var(--border)] flex items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-lg font-semibold">
+        <div style={styles.header}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1 style={styles.headerTitle}>
               {currentSession?.title || 'OpenCode Web'}
             </h1>
             {currentSession && (
-              <span className="text-xs px-2 py-1 bg-[var(--muted)] rounded-full">
+              <span style={{ padding: '2px 8px', backgroundColor: '#334155', borderRadius: '12px', fontSize: '12px', color: '#94a3b8' }}>
                 {currentSession.slug}
               </span>
             )}
           </div>
           
-          <div className="flex items-center gap-2">
-            {/* Model selector */}
-            <div className="relative">
+          <div style={styles.headerActions}>
+            <div style={styles.modelSelector}>
               <button
                 onClick={() => setShowModelSelector(!showModelSelector)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-[var(--muted)] rounded-lg hover:opacity-80"
+                style={styles.modelBtn}
               >
-                <span>{model.providerID}/{model.modelID}</span>
-                <ChevronDown className="w-3 h-3" />
+                {model.providerID}/{model.modelID}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
               </button>
               
               {showModelSelector && (
-                <div className="absolute right-0 top-full mt-1 bg-[var(--background)] border border-[var(--border)] rounded-lg shadow-lg py-1 min-w-48 z-10">
-                  <div className="px-3 py-2 text-xs text-[var(--muted-foreground)] uppercase">
-                    OpenAI
-                  </div>
-                  <button
-                    onClick={() => { setModel({ providerID: 'openai', modelID: 'gpt-4o' }); setShowModelSelector(false); }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-[var(--muted)] ${
-                      model.modelID === 'gpt-4o' ? 'text-[var(--primary)]' : ''
-                    }`}
-                  >
-                    gpt-4o
-                  </button>
-                  <button
-                    onClick={() => { setModel({ providerID: 'openai', modelID: 'gpt-4-turbo' }); setShowModelSelector(false); }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-[var(--muted)] ${
-                      model.modelID === 'gpt-4-turbo' ? 'text-[var(--primary)]' : ''
-                    }`}
-                  >
-                    gpt-4-turbo
-                  </button>
-                  <div className="px-3 py-2 text-xs text-[var(--muted-foreground)] uppercase border-t border-[var(--border)] mt-1">
-                    Anthropic
-                  </div>
-                  <button
-                    onClick={() => { setModel({ providerID: 'anthropic', modelID: 'claude-sonnet-4-20250506' }); setShowModelSelector(false); }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-[var(--muted)] ${
-                      model.modelID === 'claude-sonnet-4-20250506' ? 'text-[var(--primary)]' : ''
-                    }`}
-                  >
-                    claude-sonnet-4
-                  </button>
+                <div style={styles.modelDropdown}>
+                  {models.map(group => (
+                    <div key={group.provider}>
+                      <div style={styles.modelSection}>{group.provider}</div>
+                      {group.models.map(m => (
+                        <button
+                          key={m}
+                          onClick={() => { setModel({ providerID: group.provider.toLowerCase(), modelID: m }); setShowModelSelector(false); }}
+                          style={{
+                            ...styles.modelOption,
+                            color: model.modelID === m ? '#3b82f6' : '#e2e8f0',
+                          }}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
             
             {currentSession && (
               <>
-                <button
-                  onClick={() => copyToClipboard(window.location.href)}
-                  className="p-2 hover:bg-[var(--muted)] rounded-lg"
-                  title="Copy link"
-                >
-                  <Copy className="w-4 h-4" />
+                <button style={styles.iconBtn} title="Copy link">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
                 </button>
-                <button className="p-2 hover:bg-[var(--muted)] rounded-lg" title="Share">
-                  <Share2 className="w-4 h-4" />
+                <button style={styles.iconBtn} title="Share">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="18" cy="5" r="3"/>
+                    <circle cx="6" cy="12" r="3"/>
+                    <circle cx="18" cy="19" r="3"/>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                  </svg>
                 </button>
               </>
             )}
           </div>
         </div>
 
-        {/* Messages area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Messages Area */}
+        <div style={styles.messagesArea}>
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)]">
-              <Terminal className="w-16 h-16 mb-4 opacity-50" />
-              <h2 className="text-xl font-semibold mb-2">Welcome to OpenCode Web</h2>
-              <p className="text-center max-w-md">
+            <div style={styles.welcomeScreen}>
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={styles.welcomeIcon}>
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+              </svg>
+              <h2 style={styles.welcomeTitle}>Welcome to OpenCode Web</h2>
+              <p style={styles.welcomeText}>
                 Start a new session to begin coding with AI assistance.
                 Each session maintains its own context and history.
               </p>
@@ -419,49 +643,34 @@ export default function HomePage() {
             messages.map(message => (
               <div
                 key={message.id}
-                className={`flex gap-3 ${
-                  message.role === 'user' ? 'flex-row-reverse' : ''
-                }`}
+                style={{
+                  ...styles.messageRow,
+                  ...(message.role === 'user' ? styles.messageRowUser : {}),
+                }}
               >
-                {/* Avatar */}
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  message.role === 'user'
-                    ? 'bg-[var(--primary)] text-[var(--primary-foreground)]'
-                    : 'bg-[var(--muted)]'
-                }`}>
+                <div style={{ ...styles.avatar, ...(message.role === 'user' ? styles.avatarUser : styles.avatarAssistant) }}>
                   {message.role === 'user' ? 'U' : 'AI'}
                 </div>
-
-                {/* Message bubble */}
-                <div className={`max-w-[70%]`}>
-                  <div className={`message-bubble ${message.role}`}>
-                    <pre className="whitespace-pre-wrap font-sans text-sm">
+                <div>
+                  <div style={{ ...styles.messageBubble, ...(message.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant) }}>
+                    <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
                       {message.content || (isStreaming && message.role === 'assistant' ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Thinking...
+                        <span style={styles.loadingSpinner}>
+                          <span style={{ ...styles.loadingDots, animationDelay: '0s' }}></span>
+                          <span style={{ ...styles.loadingDots, animationDelay: '0.2s' }}></span>
+                          <span style={{ ...styles.loadingDots, animationDelay: '0.4s' }}></span>
                         </span>
                       ) : '')}
                     </pre>
                   </div>
-                  
-                  {/* Message metadata */}
                   {message.role === 'assistant' && (
-                    <div className="flex items-center gap-4 mt-1 text-xs text-[var(--muted-foreground)]">
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'flex', gap: '12px' }}>
                       <span>{message.agent}</span>
-                      {message.modelID && <span>{message.modelID}</span>}
-                      {message.tokens && (
-                        <span>{message.tokens.input + message.tokens.output} tokens</span>
-                      )}
-                      {message.cost !== undefined && message.cost > 0 && (
-                        <span>${message.cost.toFixed(4)}</span>
-                      )}
+                      <span>{message.modelID}</span>
                     </div>
                   )}
-                  
-                  {/* Timestamp */}
-                  <div className="text-xs text-[var(--muted-foreground)] mt-1">
-                    {formatTimestamp(message.timestamp)}
+                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                    {formatTime(message.timestamp)}
                   </div>
                 </div>
               </div>
@@ -470,59 +679,70 @@ export default function HomePage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input area */}
-        <div className="border-t border-[var(--border)] p-4">
-          <div className="flex items-end gap-2">
-            <div className="flex-1 relative">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={currentSession ? "Type your request..." : "Create a session to start"}
-                disabled={!currentSession || isStreaming}
-                className="terminal-input w-full min-h-[60px] max-h-[200px] p-3 bg-[var(--muted)] rounded-lg resize-none disabled:opacity-50"
-                rows={Math.min(4, input.split('\n').length)}
-              />
-              <div className="absolute bottom-2 right-2 flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
-                <Command className="w-3 h-3" />
-                Enter to send
-              </div>
-            </div>
-            
+        {/* Input Area */}
+        <div style={styles.inputArea}>
+          <div style={styles.inputWrapper}>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={currentSession ? "Type your request..." : "Create a session to start"}
+              disabled={!currentSession || isStreaming}
+              style={{
+                ...styles.input,
+                opacity: (!currentSession || isStreaming) ? 0.5 : 1,
+                cursor: (!currentSession || isStreaming) ? 'not-allowed' : 'text',
+              }}
+              rows={Math.min(4, input.split('\n').length)}
+            />
             <button
               onClick={submitPrompt}
               disabled={!input.trim() || !currentSession || isStreaming}
-              className="p-3 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                ...styles.sendBtn,
+                opacity: (!input.trim() || !currentSession || isStreaming) ? 0.5 : 1,
+                cursor: (!input.trim() || !currentSession || isStreaming) ? 'not-allowed' : 'pointer',
+              }}
             >
-              {isStreaming ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
             </button>
           </div>
           
-          {/* Available tools info */}
-          <div className="flex items-center gap-4 mt-2 text-xs text-[var(--muted-foreground)]">
-            <span className="flex items-center gap-1">
-              <FileCode className="w-3 h-3" />
+          <div style={styles.toolsInfo}>
+            <span style={styles.toolTag}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
               read, write, edit
             </span>
-            <span className="flex items-center gap-1">
-              <Folder className="w-3 h-3" />
+            <span style={styles.toolTag}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="4 17 10 11 4 5"/>
+                <line x1="12" y1="19" x2="20" y2="19"/>
+              </svg>
               bash, search
             </span>
-            <span className="flex items-center gap-1">
-              <Command className="w-3 h-3" />
+            <span style={styles.toolTag}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="16 18 22 12 16 6"/>
+                <polyline points="8 6 2 12 8 18"/>
+              </svg>
               lsp, format
             </span>
           </div>
         </div>
       </div>
 
-      {/* Resizer handle */}
-      <div className="resizer w-1 hover:w-1" />
+      {showModelSelector && (
+        <div 
+          style={{ position: 'fixed', inset: 0, zIndex: 40 }} 
+          onClick={() => setShowModelSelector(false)}
+        />
+      )}
     </div>
   )
 }
