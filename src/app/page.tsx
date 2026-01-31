@@ -138,27 +138,19 @@ export default function HomePage() {
   useEffect(() => {
     // Get server URL from environment or URL parameter
     const params = new URLSearchParams(window.location.search)
-    const server = params.get('server') || process.env.NEXT_PUBLIC_OPENCODE_URL || 'http://170.9.12.37'
+    const server = params.get('server') || process.env.NEXT_PUBLIC_OPENCODE_URL || 'http://170.9.12.37:4096'
     setServerUrl(server)
 
-    // Check connection with timeout
-    if (server) {
-      setChecking(true)
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000)
-
-      fetch(`${server}/global/health`, { signal: controller.signal })
-        .then(res => res.ok)
-        .then(setIsConnected)
-        .catch(() => setIsConnected(false))
-        .finally(() => {
-          clearTimeout(timeoutId)
-          setChecking(false)
-        })
-    }
+    // Check connection via API proxy (avoids CORS issues)
+    setChecking(true)
+    fetch('/api/proxy/global/health')
+      .then(res => res.ok)
+      .then(setIsConnected)
+      .catch(() => setIsConnected(false))
+      .finally(() => setChecking(false))
   }, [])
 
-  const openCodeUrl = serverUrl || 'http://170.9.12.37'
+  const openCodeUrl = serverUrl || 'http://170.9.12.37:4096'
 
   return (
     <div style={styles.container}>
