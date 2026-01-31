@@ -57,8 +57,7 @@ export default function HomePage() {
             <span style={styles.logoText}>OpenCode</span>
           </Link>
           <div style={styles.navLinks}>
-            <Link href="/docs" style={styles.navLink}>Documentation</Link>
-            <a href={serverUrl} target="_blank" rel="noopener noreferrer" style={styles.navLink}>Terminal</a>
+            <Link href="/docs" style={styles.navLink}>API Documentation</Link>
             <a href="https://github.com/anomalyco/opencode" target="_blank" rel="noopener noreferrer" style={styles.navLink}>GitHub</a>
           </div>
         </div>
@@ -82,90 +81,159 @@ export default function HomePage() {
             A powerful AI-assisted coding platform with full terminal interface,
             extensive tool support, and seamless integration with your workflow.
           </p>
-          <div style={styles.heroButtons}>
-            <a href={serverUrl} target="_blank" rel="noopener noreferrer" style={styles.primaryButton}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="4 17 10 11 4 5" />
-                <line x1="12" y1="19" x2="20" y2="19" />
-              </svg>
-              Open Terminal
+
+          {/* Three Main Actions */}
+          <div style={styles.actionCards}>
+            {/* Card 1: OpenCode Web */}
+            <a href={serverUrl} target="_blank" rel="noopener noreferrer" style={styles.actionCard}>
+              <div style={styles.actionIcon}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#007AFF" strokeWidth="1.5">
+                  <rect x="2" y="3" width="20" height="14" rx="2" />
+                  <line x1="8" y1="21" x2="16" y2="21" />
+                  <line x1="12" y1="17" x2="12" y2="21" />
+                </svg>
+              </div>
+              <h3 style={styles.actionTitle}>OpenCode Web</h3>
+              <p style={styles.actionDesc}>
+                Full-featured web interface. Manage sessions, browse files, and interact with AI.
+              </p>
+              <div style={styles.actionLink}>
+                <span>Open in browser</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </div>
             </a>
-            <Link href="/docs" style={styles.secondaryButton}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-              </svg>
-              API Documentation
+
+            {/* Card 2: Terminal */}
+            <a href={serverUrl} target="_blank" rel="noopener noreferrer" style={styles.actionCard}>
+              <div style={styles.actionIcon}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="1.5">
+                  <polyline points="4 17 10 11 4 5" />
+                  <line x1="12" y1="19" x2="20" y2="19" />
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                </svg>
+              </div>
+              <h3 style={styles.actionTitle}>Terminal</h3>
+              <p style={styles.actionDesc}>
+                Interactive TUI terminal. Full command-line experience with AI assistance.
+              </p>
+              <div style={styles.actionLink}>
+                <span>Launch terminal</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </div>
+            </a>
+
+            {/* Card 3: API */}
+            <Link href="/docs" style={styles.actionCard}>
+              <div style={styles.actionIcon}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="1.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
+              </div>
+              <h3 style={styles.actionTitle}>API</h3>
+              <p style={styles.actionDesc}>
+                Complete REST API reference. Type-safe SDK for JavaScript/TypeScript.
+              </p>
+              <div style={styles.actionLink}>
+                <span>View documentation</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </div>
             </Link>
           </div>
         </section>
 
-        {/* Features */}
+        {/* Features Grid */}
         <section style={styles.features}>
           <div style={styles.featureCard}>
             <div style={styles.featureIcon}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#007AFF" strokeWidth="1.5">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#007AFF" strokeWidth="1.5">
                 <polyline points="4 17 10 11 4 5" />
                 <line x1="12" y1="19" x2="20" y2="19" />
               </svg>
             </div>
-            <h3 style={styles.featureTitle}>Terminal Interface</h3>
-            <p style={styles.featureDesc}>
-              Full-featured TUI with syntax highlighting, keyboard shortcuts, and persistent sessions.
-            </p>
+            <h4 style={styles.featureTitle}>TUI Terminal</h4>
+            <p style={styles.featureDesc}>Full terminal interface with keyboard shortcuts and persistent sessions.</p>
           </div>
 
           <div style={styles.featureCard}>
             <div style={styles.featureIcon}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5856D6" strokeWidth="1.5">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5856D6" strokeWidth="1.5">
                 <rect x="2" y="3" width="20" height="14" rx="2" />
                 <line x1="8" y1="21" x2="16" y2="21" />
                 <line x1="12" y1="17" x2="12" y2="21" />
               </svg>
             </div>
-            <h3 style={styles.featureTitle}>Web Interface</h3>
-            <p style={styles.featureDesc}>
-              Access OpenCode from any browser with our responsive web application.
-            </p>
+            <h4 style={styles.featureTitle}>Web Interface</h4>
+            <p style={styles.featureDesc}>Access from any browser with responsive design and session management.</p>
           </div>
 
           <div style={styles.featureCard}>
             <div style={styles.featureIcon}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="1.5">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="1.5">
                 <polyline points="16 18 22 12 16 6" />
                 <polyline points="8 6 2 12 8 18" />
               </svg>
             </div>
-            <h3 style={styles.featureTitle}>Type-Safe SDK</h3>
-            <p style={styles.featureDesc}>
-              Official JavaScript/TypeScript SDK for programmatic control and integrations.
-            </p>
+            <h4 style={styles.featureTitle}>Type-Safe SDK</h4>
+            <p style={styles.featureDesc}>Official JavaScript/TypeScript SDK for programmatic control.</p>
           </div>
 
           <div style={styles.featureCard}>
             <div style={styles.featureIcon}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="1.5">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="1.5">
                 <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4" />
               </svg>
             </div>
-            <h3 style={styles.featureTitle}>Extensible Tools</h3>
-            <p style={styles.featureDesc}>
-              Read, write, edit, search, and execute shell commands with built-in tools.
-            </p>
+            <h4 style={styles.featureTitle}>Extensible Tools</h4>
+            <p style={styles.featureDesc}>Read, write, edit, search, and execute shell commands.</p>
+          </div>
+
+          <div style={styles.featureCard}>
+            <div style={styles.featureIcon}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF3B30" strokeWidth="1.5">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+            </div>
+            <h4 style={styles.featureTitle}>Secure</h4>
+            <p style={styles.featureDesc}>Local-first design with optional authentication and encryption.</p>
+          </div>
+
+          <div style={styles.featureCard}>
+            <div style={styles.featureIcon}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#30D158" strokeWidth="1.5">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M8 12l2 2 4-4" />
+              </svg>
+            </div>
+            <h4 style={styles.featureTitle}>Open Source</h4>
+            <p style={styles.featureDesc}>Free and open source. Contribute on GitHub.</p>
           </div>
         </section>
 
-        {/* Quick API Examples */}
-        <section style={styles.apiSection}>
+        {/* Quick Start */}
+        <section style={styles.quickStart}>
           <h2 style={styles.sectionTitle}>Quick Start</h2>
           <p style={styles.sectionSubtitle}>Install the SDK and start building</p>
 
           <div style={styles.codeBlock}>
             <div style={styles.codeHeader}>
-              <span style={styles.codeLanguage}>JavaScript</span>
+              <span style={styles.codeLanguage}>npm</span>
               <button style={styles.copyButton} onClick={() => navigator.clipboard.writeText('npm install @opencode-ai/sdk')}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="9" y="9" width="13" height="13" rx="2" />
@@ -181,15 +249,22 @@ export default function HomePage() {
 
           <div style={styles.codeBlock}>
             <div style={styles.codeHeader}>
-              <span style={styles.codeLanguage}>Create a Session</span>
+              <span style={styles.codeLanguage}>JavaScript</span>
             </div>
             <pre style={styles.codeContent}>
               <code>{`import { createOpencode } from "@opencode-ai/sdk"
 
 const { client } = await createOpencode()
 
+// Create a session
 const session = await client.session.create({
   body: { title: "My Session" }
+})
+
+// Send a prompt
+await client.session.prompt({
+  path: { id: session.id },
+  body: { message: "Hello, help me write code!" }
 })`}</code>
             </pre>
           </div>
@@ -209,11 +284,16 @@ const session = await client.session.create({
               <h4 style={styles.resourceTitle}>Discord</h4>
               <p style={styles.resourceDesc}>Join our community</p>
             </a>
-            <Link href="/docs" style={styles.resourceCard}>
-              <div style={styles.resourceIcon}>📚</div>
-              <h4 style={styles.resourceTitle}>Documentation</h4>
-              <p style={styles.resourceDesc}>Read the full docs</p>
-            </Link>
+            <a href="https://opencode.ai/docs/cli" target="_blank" rel="noopener noreferrer" style={styles.resourceCard}>
+              <div style={styles.resourceIcon}>⌨️</div>
+              <h4 style={styles.resourceTitle}>CLI Reference</h4>
+              <p style={styles.resourceDesc}>All CLI commands</p>
+            </a>
+            <a href="https://opencode.ai/docs/tui" target="_blank" rel="noopener noreferrer" style={styles.resourceCard}>
+              <div style={styles.resourceIcon}>📖</div>
+              <h4 style={styles.resourceTitle}>TUI Guide</h4>
+              <p style={styles.resourceDesc}>Terminal interface guide</p>
+            </a>
           </div>
         </section>
       </main>
@@ -290,9 +370,9 @@ const styles: Record<string, React.CSSProperties> = {
     paddingTop: '64px',
   },
   hero: {
-    padding: '120px 40px 100px',
+    padding: '100px 40px 80px',
     textAlign: 'center',
-    maxWidth: '900px',
+    maxWidth: '1200px',
     margin: '0 auto',
   },
   heroBadge: {
@@ -306,7 +386,7 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '24px',
   },
   heroTitle: {
-    fontSize: '72px',
+    fontSize: '64px',
     fontWeight: 700,
     lineHeight: 1.1,
     marginBottom: '24px',
@@ -319,115 +399,130 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundClip: 'text',
   },
   heroSubtitle: {
-    fontSize: '21px',
+    fontSize: '20px',
     lineHeight: 1.5,
     color: '#86868B',
     maxWidth: '600px',
-    margin: '0 auto 40px',
+    margin: '0 auto 48px',
   },
-  heroButtons: {
-    display: 'flex',
-    gap: '16px',
-    justifyContent: 'center',
-  },
-  primaryButton: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '14px 28px',
-    backgroundColor: '#007AFF',
-    color: '#FFFFFF',
-    borderRadius: '24px',
-    fontSize: '17px',
-    fontWeight: 600,
-    textDecoration: 'none',
-    transition: 'all 0.3s ease',
-    boxShadow: '0 4px 20px rgba(0, 122, 255, 0.3)',
-  },
-  secondaryButton: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '14px 28px',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    color: '#F5F5F7',
-    borderRadius: '24px',
-    fontSize: '17px',
-    fontWeight: 600,
-    textDecoration: 'none',
-    transition: 'all 0.3s ease',
-    border: '1px solid rgba(255, 255, 255, 0.15)',
-  },
-  features: {
+  actionCards: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-    gap: '24px',
-    padding: '60px 40px',
-    maxWidth: '1200px',
-    margin: '0 auto',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '20px',
+    marginBottom: '80px',
   },
-  featureCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  actionCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '40px 32px',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: '24px',
-    padding: '32px',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    textDecoration: 'none',
     transition: 'all 0.3s ease',
   },
-  featureIcon: {
-    width: '56px',
-    height: '56px',
+  actionIcon: {
+    width: '72px',
+    height: '72px',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: '16px',
+    borderRadius: '20px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: '20px',
   },
-  featureTitle: {
-    fontSize: '20px',
-    fontWeight: 600,
+  actionTitle: {
+    fontSize: '22px',
+    fontWeight: 700,
     marginBottom: '12px',
     color: '#F5F5F7',
   },
-  featureDesc: {
-    fontSize: '15px',
+  actionDesc: {
+    fontSize: '14px',
     lineHeight: 1.6,
     color: '#86868B',
+    marginBottom: '20px',
+    textAlign: 'center',
   },
-  apiSection: {
-    padding: '100px 40px',
+  actionLink: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '14px',
+    fontWeight: 600,
+    color: '#007AFF',
+  },
+  features: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: '16px',
+    padding: '0 40px 80px',
+    maxWidth: '1200px',
+    margin: '0 auto',
+  },
+  featureCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '20px',
+    padding: '28px',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    transition: 'all 0.3s ease',
+  },
+  featureIcon: {
+    width: '48px',
+    height: '48px',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: '14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '16px',
+  },
+  featureTitle: {
+    fontSize: '17px',
+    fontWeight: 600,
+    marginBottom: '8px',
+    color: '#F5F5F7',
+  },
+  featureDesc: {
+    fontSize: '14px',
+    lineHeight: 1.5,
+    color: '#86868B',
+  },
+  quickStart: {
+    padding: '60px 40px 80px',
     maxWidth: '800px',
     margin: '0 auto',
   },
   sectionTitle: {
-    fontSize: '40px',
+    fontSize: '36px',
     fontWeight: 700,
     textAlign: 'center',
     marginBottom: '12px',
   },
   sectionSubtitle: {
-    fontSize: '19px',
+    fontSize: '17px',
     color: '#86868B',
     textAlign: 'center',
-    marginBottom: '48px',
+    marginBottom: '40px',
   },
   codeBlock: {
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: '16px',
+    borderRadius: '14px',
     overflow: 'hidden',
-    marginBottom: '24px',
+    marginBottom: '20px',
     border: '1px solid rgba(255, 255, 255, 0.08)',
   },
   codeHeader: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '14px 20px',
+    padding: '12px 16px',
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
   },
   codeLanguage: {
-    fontSize: '13px',
+    fontSize: '12px',
     fontWeight: 600,
     color: '#86868B',
     textTransform: 'uppercase',
@@ -456,38 +551,38 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'auto',
   },
   resources: {
-    padding: '60px 40px 100px',
+    padding: '0 40px 100px',
     maxWidth: '1000px',
     margin: '0 auto',
   },
   resourceGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '20px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gap: '16px',
   },
   resourceCard: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    padding: '32px 24px',
+    padding: '28px 20px',
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: '20px',
+    borderRadius: '16px',
     border: '1px solid rgba(255, 255, 255, 0.08)',
     textDecoration: 'none',
     transition: 'all 0.3s ease',
   },
   resourceIcon: {
-    fontSize: '36px',
-    marginBottom: '16px',
+    fontSize: '28px',
+    marginBottom: '12px',
   },
   resourceTitle: {
-    fontSize: '17px',
+    fontSize: '15px',
     fontWeight: 600,
     color: '#F5F5F7',
-    marginBottom: '6px',
+    marginBottom: '4px',
   },
   resourceDesc: {
-    fontSize: '14px',
+    fontSize: '13px',
     color: '#86868B',
   },
   footer: {

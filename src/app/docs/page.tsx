@@ -40,91 +40,23 @@ export default function DocsPage() {
       <main style={styles.main}>
         <h1 style={styles.title}>API Documentation</h1>
         <p style={styles.subtitle}>
-          Complete reference for the OpenCode API. Use the SDK for type-safe integration.
+          Complete REST API reference for OpenCode. Use the official SDK for type-safe integration.
         </p>
 
         {/* Navigation Pills */}
         <div style={styles.pillNav}>
-          <a href="#sessions" style={{ ...styles.pill, ...styles.pillActive }}>Sessions</a>
+          <a href="#sdk" style={{ ...styles.pill, ...styles.pillActive }}>SDK</a>
           <a href="#global" style={styles.pill}>Global</a>
-          <a href="#sdk" style={styles.pill}>SDK</a>
-          <a href="#tools" style={styles.pill}>Tools</a>
-          <a href="#examples" style={styles.pill}>Examples</a>
+          <a href="#sessions" style={styles.pill}>Sessions</a>
+          <a href="#files" style={styles.pill}>Files</a>
+          <a href="#tui" style={styles.pill}>TUI</a>
+          <a href="#config" style={styles.pill}>Config</a>
+          <a href="#events" style={styles.pill}>Events</a>
         </div>
 
-        {/* Sessions Section */}
-        <section id="sessions" style={styles.section}>
-          <h2 style={styles.sectionTitle}>Sessions</h2>
-          <p style={styles.sectionDesc}>Create and manage OpenCode sessions</p>
-
-          <div style={styles.endpoint}>
-            <div style={styles.endpointHeader}>
-              <span style={{ ...styles.method, ...styles.post }}>POST</span>
-              <span style={styles.path}>/session</span>
-            </div>
-            <p style={styles.endpointDesc}>Create a new session</p>
-            <pre style={styles.code}>
-{`{
-  "title": "My Session",
-  "directory": "/path/to/project",
-  "model": {
-    "providerID": "openai",
-    "modelID": "gpt-4o"
-  }
-}`}
-            </pre>
-          </div>
-
-          <div style={styles.endpoint}>
-            <div style={styles.endpointHeader}>
-              <span style={{ ...styles.method, ...styles.get }}>GET</span>
-              <span style={styles.path}>/session?projectID=default&amp;limit=20</span>
-            </div>
-            <p style={styles.endpointDesc}>List all sessions</p>
-          </div>
-
-          <div style={styles.endpoint}>
-            <div style={styles.endpointHeader}>
-              <span style={{ ...styles.method, ...styles.post }}>POST</span>
-              <span style={styles.path}>/session/:id/prompt</span>
-            </div>
-            <p style={styles.endpointDesc}>Send a prompt to a session</p>
-            <pre style={styles.code}>
-{`{
-  "message": "Write a Python function",
-  "agent": "general",
-  "model": {
-    "providerID": "openai",
-    "modelID": "gpt-4o"
-  }
-}`}
-            </pre>
-          </div>
-        </section>
-
-        {/* Global Section */}
-        <section id="global" style={styles.section}>
-          <h2 style={styles.sectionTitle}>Global</h2>
-
-          <div style={styles.endpoint}>
-            <div style={styles.endpointHeader}>
-              <span style={{ ...styles.method, ...styles.get }}>GET</span>
-              <span style={styles.path}>/global/health</span>
-            </div>
-            <p style={styles.endpointDesc}>Health check endpoint</p>
-            <pre style={styles.code}>
-{`// Response
-{
-  "healthy": true,
-  "version": "1.1.48"
-}`}
-            </pre>
-          </div>
-        </section>
-
-        {/* SDK Section */}
+        {/* SDK Installation */}
         <section id="sdk" style={styles.section}>
-          <h2 style={styles.sectionTitle}>SDK</h2>
+          <h2 style={styles.sectionTitle}>SDK Installation</h2>
           <p style={styles.sectionDesc}>Install the official JavaScript/TypeScript SDK</p>
 
           <div style={styles.codeBlock}>
@@ -143,9 +75,11 @@ export default function DocsPage() {
             <pre style={styles.code}>
               <code>{`import { createOpencode } from "@opencode-ai/sdk"
 
-const { client } = await createOpencode()
+const { client } = await createOpencode({
+  hostname: "127.0.0.1",
+  port: 4096,
+})
 
-// Create a session
 const session = await client.session.create({
   body: { title: "My Session" }
 })`}</code>
@@ -153,67 +87,419 @@ const session = await client.session.create({
           </div>
         </section>
 
-        {/* Tools Section */}
-        <section id="tools" style={styles.section}>
-          <h2 style={styles.sectionTitle}>Available Tools</h2>
+        {/* Global API */}
+        <section id="global" style={styles.section}>
+          <h2 style={styles.sectionTitle}>Global API</h2>
+          <p style={styles.sectionDesc}>Global endpoints for health checks and app management</p>
 
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Tool</th>
-                <th style={styles.th}>Description</th>
-                <th style={styles.th}>Example</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={styles.td}><code style={styles.codeInline}>read</code></td>
-                <td style={styles.td}>Read file contents</td>
-                <td style={styles.td}><code style={styles.codeInline}>read /path/to/file</code></td>
-              </tr>
-              <tr>
-                <td style={styles.td}><code style={styles.codeInline}>write</code></td>
-                <td style={styles.td}>Write file contents</td>
-                <td style={styles.td}><code style={styles.codeInline}>write /path/file &quot;content&quot;</code></td>
-              </tr>
-              <tr>
-                <td style={styles.td}><code style={styles.codeInline}>edit</code></td>
-                <td style={styles.td}>Edit file</td>
-                <td style={styles.td}><code style={styles.codeInline}>edit /path/file old new</code></td>
-              </tr>
-              <tr>
-                <td style={styles.td}><code style={styles.codeInline}>bash</code></td>
-                <td style={styles.td}>Execute shell commands</td>
-                <td style={styles.td}><code style={styles.codeInline}>bash ls -la</code></td>
-              </tr>
-              <tr>
-                <td style={styles.td}><code style={styles.codeInline}>search</code></td>
-                <td style={styles.td}>Search file contents</td>
-                <td style={styles.td}><code style={styles.codeInline}>search pattern /path</code></td>
-              </tr>
-            </tbody>
-          </table>
+          <div style={styles.endpointTable}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Method</th>
+                  <th style={styles.th}>Endpoint</th>
+                  <th style={styles.th}>Description</th>
+                  <th style={styles.th}>Response</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/global/health</code></td>
+                  <td style={styles.td}>Check server health and version</td>
+                  <td style={styles.td}><code style={styles.codeInline}>{"{ healthy: true, version: string }"}</code></td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/app/log</code></td>
+                  <td style={styles.td}>Write a log entry</td>
+                  <td style={styles.td}><code style={styles.codeInline}>boolean</code></td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/app/agents</code></td>
+                  <td style={styles.td}>List all available agents</td>
+                  <td style={styles.td}><code style={styles.codeInline}>Agent[]</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
-        {/* Examples Section */}
-        <section id="examples" style={styles.section}>
-          <h2 style={styles.sectionTitle}>cURL Examples</h2>
+        {/* Sessions API */}
+        <section id="sessions" style={styles.section}>
+          <h2 style={styles.sectionTitle}>Sessions API</h2>
+          <p style={styles.sectionDesc}>Create, manage, and interact with OpenCode sessions</p>
+
+          <div style={styles.endpointTable}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Method</th>
+                  <th style={styles.th}>Endpoint</th>
+                  <th style={styles.th}>Description</th>
+                  <th style={styles.th}>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session</code></td>
+                  <td style={styles.td}>List all sessions</td>
+                  <td style={styles.td}>Returns Session[]</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session</code></td>
+                  <td style={styles.td}>Create a new session</td>
+                  <td style={styles.td}>Returns Session</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session/:id</code></td>
+                  <td style={styles.td}>Get session details</td>
+                  <td style={styles.td}>Returns Session</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session/:id/prompt</code></td>
+                  <td style={styles.td}>Send a prompt message</td>
+                  <td style={styles.td}>Core session interaction</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session/:id/command</code></td>
+                  <td style={styles.td}>Send a command to session</td>
+                  <td style={styles.td}>Returns AssistantMessage</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session/:id/shell</code></td>
+                  <td style={styles.td}>Run a shell command</td>
+                  <td style={styles.td}>Returns AssistantMessage</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session/:id/abort</code></td>
+                  <td style={styles.td}>Abort a running session</td>
+                  <td style={styles.td}>Returns boolean</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session/:id/messages</code></td>
+                  <td style={styles.td}>List messages in a session</td>
+                  <td style={styles.td}>Returns Message[]</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session/:id/fork</code></td>
+                  <td style={styles.td}>Fork a session</td>
+                  <td style={styles.td}>Returns new Session</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session/:id/share</code></td>
+                  <td style={styles.td}>Share session publicly</td>
+                  <td style={styles.td}>Returns shared URL</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session/:id/unshare</code></td>
+                  <td style={styles.td}>Unshare session</td>
+                  <td style={styles.td}>Returns boolean</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session/:id/undo</code></td>
+                  <td style={styles.td}>Undo last message</td>
+                  <td style={styles.td}>Reverts file changes</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session/:id/redo</code></td>
+                  <td style={styles.td}>Redo undone message</td>
+                  <td style={styles.td}>Restores file changes</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session/:id/init</code></td>
+                  <td style={styles.td}>Analyze and create AGENTS.md</td>
+                  <td style={styles.td}>Returns boolean</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodDelete}>DELETE</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/session/:id</code></td>
+                  <td style={styles.td}>Delete a session</td>
+                  <td style={styles.td}>Returns boolean</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Files API */}
+        <section id="files" style={styles.section}>
+          <h2 style={styles.sectionTitle}>Files API</h2>
+          <p style={styles.sectionDesc}>Search, read, and manage files</p>
+
+          <div style={styles.endpointTable}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Method</th>
+                  <th style={styles.th}>Endpoint</th>
+                  <th style={styles.th}>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/find/text</code></td>
+                  <td style={styles.td}>Search for text in files</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/find/files</code></td>
+                  <td style={styles.td}>Find files by name</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/find/symbols</code></td>
+                  <td style={styles.td}>Find workspace symbols</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/file/read</code></td>
+                  <td style={styles.td}>Read file contents</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/file/status</code></td>
+                  <td style={styles.td}>Get tracked file status</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/path</code></td>
+                  <td style={styles.td}>Get current path info</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* TUI API */}
+        <section id="tui" style={styles.section}>
+          <h2 style={styles.sectionTitle}>TUI API</h2>
+          <p style={styles.sectionDesc}>Control the terminal user interface programmatically</p>
+
+          <div style={styles.endpointTable}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Method</th>
+                  <th style={styles.th}>Endpoint</th>
+                  <th style={styles.th}>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/tui/appendPrompt</code></td>
+                  <td style={styles.td}>Append text to the prompt</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/tui/submitPrompt</code></td>
+                  <td style={styles.td}>Submit the current prompt</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/tui/clearPrompt</code></td>
+                  <td style={styles.td}>Clear the prompt</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/tui/openHelp</code></td>
+                  <td style={styles.td}>Open the help dialog</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/tui/openSessions</code></td>
+                  <td style={styles.td}>Open the session selector</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/tui/openThemes</code></td>
+                  <td style={styles.td}>Open the theme selector</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/tui/openModels</code></td>
+                  <td style={styles.td}>Open the model selector</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/tui/executeCommand</code></td>
+                  <td style={styles.td}>Execute a TUI command</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/tui/showToast</code></td>
+                  <td style={styles.td}>Show toast notification</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Config API */}
+        <section id="config" style={styles.section}>
+          <h2 style={styles.sectionTitle}>Config API</h2>
+          <p style={styles.sectionDesc}>Get configuration and provider information</p>
+
+          <div style={styles.endpointTable}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Method</th>
+                  <th style={styles.th}>Endpoint</th>
+                  <th style={styles.th}>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/config</code></td>
+                  <td style={styles.td}>Get config info</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/config/providers</code></td>
+                  <td style={styles.td}>List providers and defaults</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/project</code></td>
+                  <td style={styles.td}>List all projects</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/project/current</code></td>
+                  <td style={styles.td}>Get current project</td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodPost}>POST</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/auth/set</code></td>
+                  <td style={styles.td}>Set authentication credentials</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Events API */}
+        <section id="events" style={styles.section}>
+          <h2 style={styles.sectionTitle}>Events API</h2>
+          <p style={styles.sectionDesc}>Subscribe to real-time server-sent events</p>
+
+          <div style={styles.endpointTable}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Method</th>
+                  <th style={styles.th}>Endpoint</th>
+                  <th style={styles.th}>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={styles.td}><span style={styles.methodGet}>GET</span></td>
+                  <td style={styles.td}><code style={styles.codeInline}>/sse/session/:id</code></td>
+                  <td style={styles.td}>Subscribe to session events (SSE)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
           <div style={styles.codeBlock}>
             <div style={styles.codeHeader}>
-              <span style={styles.codeLanguage}>bash</span>
+              <span style={styles.codeLanguage}>JavaScript - Subscribe to Events</span>
             </div>
             <pre style={styles.code}>
-              <code>{`# Create a session
-curl -X POST ${serverUrl}/session \\
-  -H "Content-Type: application/json" \\
-  -d '{"title":"My Session"}'
+              <code>{`const events = await client.event.subscribe()
 
-# Send a prompt
-curl -X POST ${serverUrl}/session/:id/prompt \\
-  -H "Content-Type: application/json" \\
-  -d '{"message":"Hello!","model":{"providerID":"openai","modelID":"gpt-4o"}}'`}</code>
+for await (const event of events.stream) {
+  console.log("Event:", event.type, event.properties)
+}`}</code>
             </pre>
+          </div>
+
+          <div style={styles.infoBox}>
+            <strong>Event Types:</strong>
+            <ul style={styles.infoList}>
+              <li><code>session.created</code> - New session created</li>
+              <li><code>session.status</code> - Session status changed</li>
+              <li><code>message.created</code> - New message in session</li>
+              <li><code>message.part.updated</code> - Message part updated</li>
+              <li><code>tool.execute.before</code> - Tool execution started</li>
+              <li><code>tool.execute.after</code> - Tool execution completed</li>
+              <li><code>permission.asked</code> - Permission request</li>
+            </ul>
+          </div>
+        </section>
+
+        {/* Tools */}
+        <section style={styles.section}>
+          <h2 style={styles.sectionTitle}>Available Tools</h2>
+          <p style={styles.sectionDesc}>Built-in tools available in OpenCode sessions</p>
+
+          <div style={styles.endpointTable}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Tool</th>
+                  <th style={styles.th}>Description</th>
+                  <th style={styles.th}>Usage</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={styles.td}><code style={styles.codeInline}>read</code></td>
+                  <td style={styles.td}>Read file contents</td>
+                  <td style={styles.td}><code style={styles.codeInline}>read /path/to/file</code></td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><code style={styles.codeInline}>write</code></td>
+                  <td style={styles.td}>Write file contents</td>
+                  <td style={styles.td}><code style={styles.codeInline}>write /path/file &quot;content&quot;</code></td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><code style={styles.codeInline}>edit</code></td>
+                  <td style={styles.td}>Edit file</td>
+                  <td style={styles.td}><code style={styles.codeInline}>edit /path/file old new</code></td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><code style={styles.codeInline}>bash</code></td>
+                  <td style={styles.td}>Execute shell commands</td>
+                  <td style={styles.td}><code style={styles.codeInline}>bash ls -la</code></td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><code style={styles.codeInline}>search</code></td>
+                  <td style={styles.td}>Search file contents</td>
+                  <td style={styles.td}><code style={styles.codeInline}>search pattern /path</code></td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><code style={styles.codeInline}>lsp</code></td>
+                  <td style={styles.td}>LSP queries</td>
+                  <td style={styles.td}><code style={styles.codeInline}>lsp &quot;query&quot;</code></td>
+                </tr>
+                <tr>
+                  <td style={styles.td}><code style={styles.codeInline}>format</code></td>
+                  <td style={styles.td}>Format code</td>
+                  <td style={styles.td}><code style={styles.codeInline}>format /path/to/file</code></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -230,6 +516,16 @@ curl -X POST ${serverUrl}/session/:id/prompt \\
               <div style={styles.resourceIcon}>📚</div>
               <h4 style={styles.resourceTitle}>Official SDK Docs</h4>
               <p style={styles.resourceDesc}>Full SDK Reference</p>
+            </a>
+            <a href="https://opencode.ai/docs/cli" target="_blank" rel="noopener noreferrer" style={styles.resourceCard}>
+              <div style={styles.resourceIcon}>⌨️</div>
+              <h4 style={styles.resourceTitle}>CLI Reference</h4>
+              <p style={styles.resourceDesc}>All CLI Commands</p>
+            </a>
+            <a href="https://opencode.ai/docs/tui" target="_blank" rel="noopener noreferrer" style={styles.resourceCard}>
+              <div style={styles.resourceIcon}>🖥️</div>
+              <h4 style={styles.resourceTitle}>TUI Guide</h4>
+              <p style={styles.resourceDesc}>Terminal Interface</p>
             </a>
             <a href="https://opencode.ai/discord" target="_blank" rel="noopener noreferrer" style={styles.resourceCard}>
               <div style={styles.resourceIcon}>💬</div>
@@ -311,7 +607,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   main: {
     paddingTop: '64px',
-    maxWidth: '900px',
+    maxWidth: '1100px',
     margin: '0 auto',
     padding: '80px 40px',
   },
@@ -366,60 +662,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#86868B',
     marginBottom: '24px',
   },
-  endpoint: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: '16px',
-    padding: '20px',
-    marginBottom: '16px',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-  },
-  endpointHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    marginBottom: '10px',
-  },
-  method: {
-    display: 'inline-block',
-    padding: '4px 10px',
-    borderRadius: '6px',
-    fontSize: '12px',
-    fontWeight: 600,
-    marginRight: '12px',
-    textTransform: 'uppercase',
-  },
-  post: {
-    backgroundColor: 'rgba(0, 122, 255, 0.15)',
-    color: '#007AFF',
-  },
-  get: {
-    backgroundColor: 'rgba(52, 199, 89, 0.15)',
-    color: '#34C759',
-  },
-  delete: {
-    backgroundColor: 'rgba(255, 69, 58, 0.15)',
-    color: '#FF453A',
-  },
-  path: {
-    fontFamily: 'SF Mono, Monaco, monospace',
-    fontSize: '14px',
-    color: '#F5F5F7',
-  },
-  endpointDesc: {
-    fontSize: '14px',
-    color: '#86868B',
-    marginBottom: '12px',
-  },
-  code: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: '10px',
-    padding: '16px',
-    fontFamily: 'SF Mono, Monaco, monospace',
-    fontSize: '13px',
-    lineHeight: 1.6,
-    color: '#F5F5F7',
-    overflow: 'auto',
-    margin: 0,
-  },
   codeBlock: {
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: '12px',
@@ -430,6 +672,7 @@ const styles: Record<string, React.CSSProperties> = {
   codeHeader: {
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: '12px 16px',
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
@@ -440,6 +683,15 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#86868B',
     textTransform: 'uppercase',
   },
+  codeContent: {
+    padding: '20px',
+    margin: 0,
+    fontSize: '14px',
+    fontFamily: 'SF Mono, Monaco, monospace',
+    lineHeight: 1.6,
+    color: '#F5F5F7',
+    overflow: 'auto',
+  },
   codeInline: {
     backgroundColor: 'rgba(0, 122, 255, 0.1)',
     color: '#007AFF',
@@ -447,6 +699,12 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '6px',
     fontSize: '13px',
     fontFamily: 'SF Mono, Monaco, monospace',
+  },
+  endpointTable: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '16px',
+    overflow: 'hidden',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
   },
   table: {
     width: '100%',
@@ -465,11 +723,55 @@ const styles: Record<string, React.CSSProperties> = {
   td: {
     padding: '14px 16px',
     borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-    fontSize: '15px',
+    fontSize: '14px',
+    verticalAlign: 'top',
+  },
+  methodGet: {
+    display: 'inline-block',
+    padding: '3px 8px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 700,
+    backgroundColor: 'rgba(52, 199, 89, 0.15)',
+    color: '#34C759',
+    marginRight: '8px',
+  },
+  methodPost: {
+    display: 'inline-block',
+    padding: '3px 8px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 700,
+    backgroundColor: 'rgba(0, 122, 255, 0.15)',
+    color: '#007AFF',
+    marginRight: '8px',
+  },
+  methodDelete: {
+    display: 'inline-block',
+    padding: '3px 8px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 700,
+    backgroundColor: 'rgba(255, 69, 58, 0.15)',
+    color: '#FF453A',
+    marginRight: '8px',
+  },
+  infoBox: {
+    backgroundColor: 'rgba(0, 122, 255, 0.08)',
+    borderRadius: '12px',
+    padding: '20px',
+    marginTop: '20px',
+    border: '1px solid rgba(0, 122, 255, 0.2)',
+  },
+  infoList: {
+    margin: '12px 0 0 0',
+    paddingLeft: '20px',
+    color: '#86868B',
+    lineHeight: 1.8,
   },
   resourceGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
     gap: '16px',
   },
   resourceCard: {
