@@ -62,7 +62,7 @@ export default function TerminalPage() {
         </div>
         <div style={styles.info}>
           <p style={styles.infoText}>
-            Running <strong>ttyd</strong> web terminal via Cloudflare Tunnel
+            Powered by <strong>OpenCode</strong> TUI via Cloudflare Tunnel
           </p>
         </div>
       </main>
