@@ -113,7 +113,7 @@ export default function TerminalPage() {
         term.write('\r\n\x1b[1;34m🚀 Initializing OpenCode Terminal...\x1b[0m\r\n')
 
         // Connect via Cloudflare Tunnel with custom domain
-        const tunnelUrl = 'opencode.tao-shen.com'
+        const tunnelUrl = 'reform-permission-pharmacy-saturn.trycloudflare.com'
         const wsUrl = `wss://${tunnelUrl}/pty/connect`
         
         setStatus('connecting')

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const SERVER_URL = process.env.OPENCODE_SERVER_URL || 'https://opencode.tao-shen.com'
+const SERVER_URL = process.env.OPENCODE_SERVER_URL || 'https://reform-permission-pharmacy-saturn.trycloudflare.com'
 
 export async function GET(request: NextRequest) {
   const path = request.nextUrl.pathname.replace('/api/proxy', '')
