@@ -1,0 +1,26 @@
+FROM node:20-slim
+
+# Install curl and other dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    git \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Bun
+RUN curl -fsSL https://bun.sh/install | bash
+
+ENV PATH="/root/.bun/bin:${PATH}"
+
+# Copy pre-built opencode from a build stage or install with more memory
+# Note: This may fail on 1GB RAM VMs during build
+RUN bun install -g opencode-ai || npm install -g opencode-ai
+
+WORKDIR /workspace
+
+EXPOSE 4096
+
+CMD ["opencode", "serve", "--hostname", "0.0.0.0", "--port", "4096"]

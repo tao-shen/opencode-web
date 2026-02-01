@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
           { id: 'anthropic', name: 'Anthropic', models: ['claude-sonnet-4-20250506', 'claude-opus-4-20250506'] },
         ],
         defaultAgent: 'general',
-        defaultModel: { providerID: 'openai', modelID: 'gpt-4o' },
+        defaultModel: { providerID: 'anthropic', modelID: 'claude-opus-4-20250506' },
       },
     })
   }
@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
         sessionID,
         agent: body.agent || 'general',
         content: body.message,
-        model: body.model || { providerID: 'openai', modelID: 'gpt-4o' },
+        model: body.model || { providerID: 'anthropic', modelID: 'claude-opus-4-20250506' },
         system: body.system,
         tools: body.tools,
         variant: body.variant,

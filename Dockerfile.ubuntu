@@ -1,0 +1,34 @@
+FROM ubuntu:22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    unzip \
+    ca-certificates \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Bun runtime
+RUN curl -fsSL https://bun.sh/install | bash
+
+# Add Bun to PATH
+ENV PATH="/root/.bun/bin:${PATH}"
+
+# Install OpenCode globally
+RUN bun install -g opencode-ai
+
+# Create working directory
+WORKDIR /workspace
+
+# Expose port
+EXPOSE 4096
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:4096/global/health || exit 1
+
+# Start OpenCode server
+CMD ["opencode", "serve", "--hostname", "0.0.0.0", "--port", "4096"]
