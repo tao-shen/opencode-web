@@ -90,7 +90,7 @@ export default function TerminalClient() {
         setStatus('creating-pty')
         term.write('\r\n\x1b[33mCreating PTY session...\x1b[0m\r\n')
 
-        const ptyResponse = await fetch('https://opencode.tao-shen.com/pty', {
+        const ptyResponse = await fetch('/api/proxy/pty', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
