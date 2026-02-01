@@ -1,0 +1,18 @@
+FROM ghcr.io/anomalyco/opencode:latest
+
+# Install glibc instead of gcompat
+RUN apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/v3.22/community \
+    --repository=https://dl-cdn.alpinelinux.org/alpine/v3.22/main \
+    wget ca-certificates && \
+    wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
+    wget -q -O /tmp/glibc.apk https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.35-r1/glibc-2.35-r1.apk && \
+    wget -q -O /tmp/glibc-bin.apk https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.35-r1/glibc-bin-2.35-r1.apk && \
+    wget -q -O /tmp/glibc-dev.apk https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.35-r1/glibc-dev-2.35-r1.apk && \
+    apk add --force-overwrite --no-cache /tmp/glibc.apk /tmp/glibc-bin.apk /tmp/glibc-dev.apk && \
+    rm -f /tmp/*.apk && \
+    # Remove gcompat to avoid conflicts
+    apk del gcompat 2>/dev/null || true
+
+EXPOSE 4096
+
+CMD ["opencode", "serve", "--host", "0.0.0.0", "--port", "4096"]

@@ -1,38 +1,18 @@
 'use client'
 
-import dynamic from 'next/dynamic'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
-const TerminalClient = dynamic(() => import('../../components/TerminalClient'), {
-  ssr: false,
-  loading: () => (
-    <div style={{
-      minHeight: '500px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#0D1117',
-      borderRadius: '16px',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          border: '3px solid rgba(0, 122, 255, 0.2)',
-          borderTopColor: '#007AFF',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          margin: '0 auto 16px',
-        }} />
-        <p style={{ color: '#86868B', fontSize: '14px' }}>Loading terminal...</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    </div>
-  ),
-})
-
 export default function TerminalPage() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // 使用 ttyd Web Terminal
+  const terminalUrl = 'https://opencode.tao-shen.com'
+
   return (
     <div style={styles.container}>
       <nav style={styles.nav}>
@@ -65,7 +45,26 @@ export default function TerminalPage() {
       </nav>
 
       <main style={styles.main}>
-        <TerminalClient />
+        <div style={styles.iframeContainer}>
+          {!mounted ? (
+            <div style={styles.loading}>
+              <div style={styles.spinner} />
+              <p style={styles.loadingText}>Connecting to terminal...</p>
+            </div>
+          ) : (
+            <iframe
+              src={terminalUrl}
+              style={styles.iframe}
+              title="Terminal"
+              allow="clipboard-read; clipboard-write"
+            />
+          )}
+        </div>
+        <div style={styles.info}>
+          <p style={styles.infoText}>
+            Running <strong>ttyd</strong> web terminal via Cloudflare Tunnel
+          </p>
+        </div>
       </main>
     </div>
   )
@@ -133,8 +132,52 @@ const styles: Record<string, React.CSSProperties> = {
   },
   main: {
     paddingTop: '64px',
-    maxWidth: '1200px',
+    maxWidth: '1400px',
     margin: '0 auto',
-    padding: '80px 40px 40px',
+    padding: '80px 20px 20px',
+  },
+  iframeContainer: {
+    width: '100%',
+    height: 'calc(100vh - 160px)',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#0D1117',
+  },
+  iframe: {
+    width: '100%',
+    height: '100%',
+    border: 'none',
+  },
+  loading: {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0D1117',
+  },
+  spinner: {
+    width: '40px',
+    height: '40px',
+    border: '3px solid rgba(0, 122, 255, 0.2)',
+    borderTopColor: '#007AFF',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+    marginBottom: '16px',
+  },
+  loadingText: {
+    color: '#86868B',
+    fontSize: '14px',
+  },
+  info: {
+    textAlign: 'center',
+    marginTop: '16px',
+  },
+  infoText: {
+    color: '#6E7681',
+    fontSize: '12px',
+    margin: 0,
   },
 }
