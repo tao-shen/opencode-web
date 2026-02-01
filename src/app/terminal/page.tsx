@@ -39,6 +39,7 @@ export default function TerminalPage() {
   const [isClient, setIsClient] = useState(false)
   const termRef = useRef<any>(null)
   const wsRef = useRef<WebSocket | null>(null)
+  const resizeHandlerRef = useRef<(() => void) | null>(null)
 
   // Ensure we're on the client side
   useEffect(() => {
@@ -175,10 +176,10 @@ export default function TerminalPage() {
             }
           })
 
-          // Handle browser resize
           const handleResize = () => {
             fitAddon.fit()
           }
+          resizeHandlerRef.current = handleResize
           window.addEventListener('resize', handleResize)
 
         } catch (error) {
@@ -196,6 +197,9 @@ export default function TerminalPage() {
 
     return () => {
       isMounted = false
+      if (resizeHandlerRef.current) {
+        window.removeEventListener('resize', resizeHandlerRef.current)
+      }
       if (wsRef.current) {
         wsRef.current.close()
       }
@@ -203,7 +207,7 @@ export default function TerminalPage() {
         termRef.current.dispose()
       }
     }
-  }, [])
+  }, [isClient])
 
   const reconnect = () => {
     window.location.reload()

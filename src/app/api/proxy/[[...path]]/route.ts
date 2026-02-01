@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const SERVER_URL = process.env.OPENCODE_SERVER_URL || 'http://170.9.12.37:4096'
+const SERVER_URL = process.env.OPENCODE_SERVER_URL || 'https://opencode.tao-shen.com'
 
 export async function GET(request: NextRequest) {
   const path = request.nextUrl.pathname.replace('/api/proxy', '')

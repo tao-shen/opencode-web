@@ -3,7 +3,7 @@
 import Link from 'next/link'
 
 export default function DocsPage() {
-  const serverUrl = 'http://170.9.12.37:4096'
+  const serverUrl = 'https://opencode.tao-shen.com'
 
   return (
     <div style={styles.container}>

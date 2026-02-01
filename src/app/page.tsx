@@ -35,7 +35,7 @@ export default function HomePage() {
       .finally(() => setChecking(false))
   }, [])
 
-  const serverUrl = 'http://170.9.12.37:4096'
+  const serverUrl = 'https://opencode.tao-shen.com'
 
   return (
     <div style={styles.container}>
@@ -129,13 +129,13 @@ export default function HomePage() {
                 </svg>
               </div>
               <a 
-                href="http://170.9.12.37:4096" 
+                href="https://opencode.tao-shen.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 style={styles.directLink}
                 onClick={(e) => e.stopPropagation()}
               >
-                Or use direct HTTP access →
+                Or use direct HTTPS access →
               </a>
             </Link>
 
