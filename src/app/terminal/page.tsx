@@ -1,250 +1,40 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 
-// Status badge styles
-const getStatusBadgeStyle = (status: string): React.CSSProperties => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '8px',
-  padding: '6px 14px',
-  backgroundColor: status === 'connected' ? 'rgba(52, 199, 89, 0.15)' 
-                   : status === 'connecting' ? 'rgba(255, 149, 0, 0.15)'
-                   : status === 'error' ? 'rgba(255, 69, 58, 0.15)'
-                   : 'rgba(0, 122, 255, 0.15)',
-  borderRadius: '20px',
-  fontSize: '13px',
-  fontWeight: 500,
-  color: status === 'connected' ? '#34C759' 
-         : status === 'connecting' ? '#FF9500'
-         : status === 'error' ? '#FF453A'
-         : '#007AFF',
-})
-
-const getStatusDotStyle = (status: string): React.CSSProperties => ({
-  width: '8px',
-  height: '8px',
-  borderRadius: '50%',
-  backgroundColor: status === 'connected' ? '#34C759' 
-                   : status === 'connecting' ? '#FF9500'
-                   : status === 'error' ? '#FF453A'
-                   : '#007AFF',
+const TerminalClient = dynamic(() => import('../../components/TerminalClient'), {
+  ssr: false,
+  loading: () => (
+    <div style={{
+      minHeight: '500px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#0D1117',
+      borderRadius: '16px',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid rgba(0, 122, 255, 0.2)',
+          borderTopColor: '#007AFF',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 16px',
+        }} />
+        <p style={{ color: '#86868B', fontSize: '14px' }}>Loading terminal...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    </div>
+  ),
 })
 
 export default function TerminalPage() {
-  const terminalRef = useRef<HTMLDivElement>(null)
-  const [status, setStatus] = useState('initializing')
-  const [terminalLoaded, setTerminalLoaded] = useState(false)
-  const [isClient, setIsClient] = useState(false)
-  const termRef = useRef<any>(null)
-  const wsRef = useRef<WebSocket | null>(null)
-  const resizeHandlerRef = useRef<(() => void) | null>(null)
-
-  // Ensure we're on the client side
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
-
-  // Dynamically import xterm to avoid SSR issues
-  useEffect(() => {
-    if (!isClient || !terminalRef.current) return
-    let isMounted = true
-
-    const initTerminal = async () => {
-      if (!terminalRef.current || !isMounted) return
-
-      try {
-        // Dynamic import xterm.js
-        const xtermModule = await import('@xterm/xterm')
-        const attachAddonModule = await import('@xterm/addon-attach')
-        const fitAddonModule = await import('@xterm/addon-fit')
-        
-        const { Terminal } = xtermModule
-        const { AttachAddon } = attachAddonModule
-        const { FitAddon } = fitAddonModule
-        
-        // Create terminal instance
-        const term = new Terminal({
-          cursorBlink: true,
-          cursorStyle: 'bar' as const,
-          fontFamily: '"SF Mono", Monaco, "Cascadia Code", "Fira Code", Consolas, monospace',
-          fontSize: 14,
-          lineHeight: 1.2,
-          theme: {
-            background: '#000000',
-            foreground: '#00FF00',
-            cursor: '#00FF00',
-            cursorAccent: '#003300',
-            selectionBackground: '#333333',
-            black: '#000000',
-            red: '#FF5555',
-            green: '#50FA7B',
-            yellow: '#F1FA8C',
-            blue: '#BD93F9',
-            magenta: '#FF79C6',
-            cyan: '#8BE9FD',
-            white: '#F8F8F2',
-            brightBlack: '#6272A4',
-            brightRed: '#FF6E6E',
-            brightGreen: '#69FF94',
-            brightYellow: '#FFFFA5',
-            brightBlue: '#D6ACFF',
-            brightMagenta: '#FF92DF',
-            brightCyan: '#A4FFFF',
-            brightWhite: '#FFFFFF',
-          },
-          allowTransparency: true,
-          scrollback: 5000,
-        })
-
-        const fitAddon = new FitAddon()
-        term.loadAddon(fitAddon)
-        term.open(terminalRef.current)
-        fitAddon.fit()
-
-        if (!isMounted) {
-          term.dispose()
-          return
-        }
-
-        termRef.current = term
-        setTerminalLoaded(true)
-        term.write('\r\n\x1b[1;34m🚀 Initializing OpenCode Terminal...\x1b[0m\r\n')
-
-        // Connect via Cloudflare Tunnel with custom domain
-        const tunnelUrl = 'reform-permission-pharmacy-saturn.trycloudflare.com'
-        const wsUrl = `wss://${tunnelUrl}/pty/connect`
-        
-        setStatus('connecting')
-        term.write(`\r\n\x1b[33mConnecting to ${wsUrl}...\x1b[0m\r\n`)
-
-        try {
-          const socket = new WebSocket(wsUrl)
-          wsRef.current = socket
-
-          socket.onopen = () => {
-            if (!isMounted) return
-            setStatus('connected')
-            term.write('\r\n\x1b[1;32m✅ Connected to OpenCode!\x1b[0m\r\n\r\n')
-            
-            const attachAddon = new AttachAddon(socket, {
-              bidirectional: true,
-            })
-            term.loadAddon(attachAddon)
-            
-            socket.send(JSON.stringify({
-              type: 'resize',
-              cols: term.cols,
-              rows: term.rows
-            }))
-            
-            term.write('\x1b[1;36mWelcome to OpenCode!\x1b[0m\r\n')
-            term.write('Type \x1b[1;33m/help\x1b[0m for available commands.\r\n\r\n')
-            term.focus()
-          }
-
-          socket.onmessage = (event) => {
-            if (!isMounted) return
-            try {
-              const msg = JSON.parse(event.data)
-              if (msg.type === 'output' && msg.data) {
-                term.write(msg.data)
-              }
-            } catch {
-              term.write(event.data)
-            }
-          }
-
-          socket.onclose = (event) => {
-            if (!isMounted) return
-            setStatus('disconnected')
-            term.write(`\r\n\x1b[1;31m❌ Connection closed (code: ${event.code})\x1b[0m\r\n`)
-            term.write('\r\n\x1b[33mTo reconnect, refresh the page or click "Reconnect"\x1b[0m\r\n')
-          }
-
-          socket.onerror = (error) => {
-            if (!isMounted) return
-            setStatus('error')
-            term.write('\r\n\x1b[1;31m❌ WebSocket error\x1b[0m\r\n')
-            console.error('WebSocket error:', error)
-          }
-
-          term.onResize(({ cols, rows }) => {
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({ type: 'resize', cols, rows }))
-            }
-          })
-
-          const handleResize = () => {
-            fitAddon.fit()
-          }
-          resizeHandlerRef.current = handleResize
-          window.addEventListener('resize', handleResize)
-
-        } catch (error) {
-          if (!isMounted) return
-          setStatus('error')
-          term.write(`\r\n\x1b[1;31m❌ Failed to connect: ${error}\x1b[0m\r\n`)
-        }
-      } catch (error) {
-        console.error('Failed to load xterm:', error)
-        setStatus('error')
-      }
-    }
-
-    initTerminal()
-
-    return () => {
-      isMounted = false
-      if (resizeHandlerRef.current) {
-        window.removeEventListener('resize', resizeHandlerRef.current)
-      }
-      if (wsRef.current) {
-        wsRef.current.close()
-      }
-      if (termRef.current) {
-        termRef.current.dispose()
-      }
-    }
-  }, [isClient])
-
-  const reconnect = () => {
-    window.location.reload()
-  }
-
-  // Show loading state during SSR
-  if (!isClient) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        backgroundColor: '#000000',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#F5F5F7',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif',
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '3px solid rgba(0, 122, 255, 0.2)',
-            borderTopColor: '#007AFF',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 16px',
-          }} />
-          <p style={{ color: '#86868B', fontSize: '14px' }}>Loading terminal...</p>
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div style={styles.container}>
-      {/* Navigation */}
       <nav style={styles.nav}>
         <div style={styles.navLeft}>
           <Link href="/" style={styles.logo}>
@@ -271,70 +61,11 @@ export default function TerminalPage() {
             </svg>
             Back to Home
           </Link>
-          <div style={getStatusBadgeStyle(status)}>
-            <span style={getStatusDotStyle(status)}></span>
-            {status === 'connecting' && 'Connecting...'}
-            {status === 'connected' && 'Connected'}
-            {status === 'disconnected' && 'Reconnect'}
-            {status === 'error' && 'Error'}
-            {status === 'initializing' && 'Initializing...'}
-          </div>
-          {(status === 'disconnected' || status === 'error') && (
-            <button style={styles.reconnectButton} onClick={reconnect}>
-              Reconnect
-            </button>
-          )}
         </div>
       </nav>
 
-      {/* Terminal Container */}
       <main style={styles.main}>
-        <div style={styles.terminalWrapper}>
-          <div style={styles.terminalHeader}>
-            <div style={styles.terminalButtons}>
-              <span style={{ ...styles.terminalButton, backgroundColor: '#FF5F57' }}></span>
-              <span style={{ ...styles.terminalButton, backgroundColor: '#FFBD2E' }}></span>
-              <span style={{ ...styles.terminalButton, backgroundColor: '#28CA41' }}></span>
-            </div>
-            <span style={styles.terminalTitle}>OpenCode Terminal</span>
-          </div>
-          <div 
-            ref={terminalRef} 
-            suppressHydrationWarning
-            style={styles.terminalContainer}
-          />
-        </div>
-
-        {/* Help Section */}
-        <div style={styles.helpSection}>
-          <h3 style={styles.helpTitle}>Keyboard Shortcuts</h3>
-          <div style={styles.helpGrid}>
-            <div style={styles.helpItem}>
-              <kbd style={styles.kbd}>Ctrl + C</kbd>
-              <span style={styles.helpDesc}>Interrupt</span>
-            </div>
-            <div style={styles.helpItem}>
-              <kbd style={styles.kbd}>Ctrl + D</kbd>
-              <span style={styles.helpDesc}>Exit</span>
-            </div>
-            <div style={styles.helpItem}>
-              <kbd style={styles.kbd}>Ctrl + L</kbd>
-              <span style={styles.helpDesc}>Clear</span>
-            </div>
-            <div style={styles.helpItem}>
-              <kbd style={styles.kbd}>↑ / ↓</kbd>
-              <span style={styles.helpDesc}>History</span>
-            </div>
-            <div style={styles.helpItem}>
-              <kbd style={styles.kbd}>Tab</kbd>
-              <span style={styles.helpDesc}>Autocomplete</span>
-            </div>
-            <div style={styles.helpItem}>
-              <kbd style={styles.kbd}>Ctrl + R</kbd>
-              <span style={styles.helpDesc}>Search</span>
-            </div>
-          </div>
-        </div>
+        <TerminalClient />
       </main>
     </div>
   )
@@ -400,91 +131,10 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     transition: 'color 0.2s ease',
   },
-  reconnectButton: {
-    padding: '6px 16px',
-    backgroundColor: '#007AFF',
-    color: '#FFFFFF',
-    border: 'none',
-    borderRadius: '12px',
-    fontSize: '13px',
-    fontWeight: 500,
-    cursor: 'pointer',
-  },
   main: {
     paddingTop: '64px',
     maxWidth: '1200px',
     margin: '0 auto',
-    padding: '40px',
-  },
-  terminalWrapper: {
-    backgroundColor: '#0D1117',
-    borderRadius: '16px',
-    overflow: 'hidden',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    marginBottom: '40px',
-  },
-  terminalHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    padding: '16px 20px',
-    backgroundColor: '#161B22',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-  },
-  terminalButtons: {
-    display: 'flex',
-    gap: '8px',
-  },
-  terminalButton: {
-    width: '12px',
-    height: '12px',
-    borderRadius: '50%',
-  },
-  terminalTitle: {
-    fontSize: '14px',
-    color: '#86868B',
-  },
-  terminalContainer: {
-    padding: '16px',
-    minHeight: '500px',
-    maxHeight: '70vh',
-    overflow: 'auto',
-    backgroundColor: '#000000',
-  },
-  helpSection: {
-    padding: '24px',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: '16px',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-  },
-  helpTitle: {
-    fontSize: '18px',
-    fontWeight: 600,
-    marginBottom: '20px',
-    color: '#F5F5F7',
-  },
-  helpGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-    gap: '16px',
-  },
-  helpItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  kbd: {
-    display: 'inline-block',
-    padding: '4px 10px',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: '6px',
-    fontFamily: 'SF Mono, Monaco, monospace',
-    fontSize: '13px',
-    color: '#F5F5F7',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-  },
-  helpDesc: {
-    fontSize: '14px',
-    color: '#86868B',
+    padding: '80px 40px 40px',
   },
 }

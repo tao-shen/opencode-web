@@ -35,7 +35,7 @@ export default function HomePage() {
       .finally(() => setChecking(false))
   }, [])
 
-  const serverUrl = 'https://reform-permission-pharmacy-saturn.trycloudflare.com'
+  const serverUrl = 'https://opencode.tao-shen.com'
 
   return (
     <div style={styles.container}>
@@ -129,7 +129,7 @@ export default function HomePage() {
                 </svg>
               </div>
               <a 
-                href="https://reform-permission-pharmacy-saturn.trycloudflare.com" 
+                href="https://opencode.tao-shen.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 style={styles.directLink}

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 
 export default function DocsPage() {
-  const serverUrl = 'https://reform-permission-pharmacy-saturn.trycloudflare.com'
+  const serverUrl = 'https://opencode.tao-shen.com'
 
   return (
     <div style={styles.container}>
