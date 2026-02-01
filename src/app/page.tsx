@@ -82,7 +82,7 @@ export default function HomePage() {
             extensive tool support, and seamless integration with your workflow.
           </p>
 
-          {/* Three Main Actions */}
+          {/* Four Main Actions */}
           <div style={styles.actionCards}>
             {/* Card 1: OpenCode Web */}
             <a href={serverUrl} target="_blank" rel="noopener noreferrer" style={styles.actionCard}>
@@ -107,7 +107,30 @@ export default function HomePage() {
               </div>
             </a>
 
-            {/* Card 2: Terminal */}
+            {/* Card 2: SDK Client */}
+            <Link href="/opencode" style={styles.actionCard}>
+              <div style={styles.actionIcon}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#5856D6" strokeWidth="1.5">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  <line x1="9" y1="10" x2="15" y2="10" />
+                  <line x1="9" y1="14" x2="13" y2="14" />
+                </svg>
+              </div>
+              <h3 style={styles.actionTitle}>SDK Client</h3>
+              <p style={styles.actionDesc}>
+                Chat interface powered by OpenCode SDK. Create sessions and interact with AI assistant.
+              </p>
+              <div style={styles.actionLink}>
+                <span>Open SDK client</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </div>
+            </Link>
+
+            {/* Card 3: PTY Terminal */}
             <Link href="/terminal" style={styles.actionCard}>
               <div style={styles.actionIcon}>
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="1.5">
@@ -116,9 +139,9 @@ export default function HomePage() {
                   <rect x="2" y="4" width="20" height="16" rx="2" />
                 </svg>
               </div>
-              <h3 style={styles.actionTitle}>Terminal</h3>
+              <h3 style={styles.actionTitle}>PTY Terminal</h3>
               <p style={styles.actionDesc}>
-                Embedded terminal with WebSocket connection. Click for embedded view, or access directly via HTTP.
+                Direct terminal access via WebSocket. Full shell integration with PTY support.
               </p>
               <div style={styles.actionLink}>
                 <span>Open terminal</span>
@@ -128,18 +151,9 @@ export default function HomePage() {
                   <line x1="10" y1="14" x2="21" y2="3" />
                 </svg>
               </div>
-              <a 
-                href="https://opencode.tao-shen.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                style={styles.directLink}
-                onClick={(e) => e.stopPropagation()}
-              >
-                Or use direct HTTPS access →
-              </a>
             </Link>
 
-            {/* Card 3: API */}
+            {/* Card 4: API */}
             <Link href="/docs" style={styles.actionCard}>
               <div style={styles.actionIcon}>
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="1.5">
@@ -416,7 +430,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   actionCards: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
     gap: '20px',
     marginBottom: '80px',
   },
