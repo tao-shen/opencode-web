@@ -25,6 +25,8 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json()
+    console.log('[Proxy POST]', { path, SERVER_URL, body })
+    
     const response = await fetch(`${SERVER_URL}${path}`, {
       method: 'POST',
       headers: {
@@ -33,9 +35,24 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     })
 
+    console.log('[Proxy POST Response]', { status: response.status, ok: response.ok })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('[Proxy POST Error]', { status: response.status, errorText })
+      return NextResponse.json(
+        { error: `Server responded with ${response.status}`, details: errorText },
+        { status: response.status }
+      )
+    }
+
     const data = await response.json()
     return NextResponse.json(data, { status: response.status })
   } catch (error) {
-    return NextResponse.json({ error: 'Proxy error' }, { status: 500 })
+    console.error('[Proxy POST Exception]', error)
+    return NextResponse.json(
+      { error: 'Proxy error', message: String(error) },
+      { status: 500 }
+    )
   }
 }
