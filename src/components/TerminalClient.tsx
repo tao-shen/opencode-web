@@ -2,55 +2,43 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-const getStatusBadgeStyle = (status: string): React.CSSProperties => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '8px',
-  padding: '6px 14px',
-  backgroundColor: status === 'connected' ? 'rgba(52, 199, 89, 0.15)' 
-                   : status === 'connecting' ? 'rgba(255, 149, 0, 0.15)'
-                   : status === 'error' ? 'rgba(255, 69, 58, 0.15)'
-                   : 'rgba(0, 122, 255, 0.15)',
-  borderRadius: '20px',
-  fontSize: '13px',
-  fontWeight: 500,
-  color: status === 'connected' ? '#34C759' 
-         : status === 'connecting' ? '#FF9500'
-         : status === 'error' ? '#FF453A'
-         : '#007AFF',
-})
-
-const getStatusDotStyle = (status: string): React.CSSProperties => ({
-  width: '8px',
-  height: '8px',
-  borderRadius: '50%',
-  backgroundColor: status === 'connected' ? '#34C759' 
-                   : status === 'connecting' ? '#FF9500'
-                   : status === 'error' ? '#FF453A'
-                   : '#007AFF',
-})
+interface PtyInfo {
+  id: string
+  title: string
+  command: string
+  args: string[]
+  cwd: string
+  status: 'running' | 'exited'
+  pid: number
+}
 
 export default function TerminalClient() {
   const terminalRef = useRef<HTMLDivElement>(null)
-  const [status, setStatus] = useState('initializing')
+  const [status, setStatus] = useState<'initializing' | 'creating-pty' | 'connecting' | 'connected' | 'disconnected' | 'error'>('initializing')
+  const [errorMessage, setErrorMessage] = useState('')
   const termRef = useRef<any>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const resizeHandlerRef = useRef<(() => void) | null>(null)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    if (!terminalRef.current) return
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted || !terminalRef.current) return
     let isMounted = true
 
     const initTerminal = async () => {
       if (!terminalRef.current || !isMounted) return
 
       try {
+        setStatus('initializing')
+        
         const xtermModule = await import('@xterm/xterm')
-        const attachAddonModule = await import('@xterm/addon-attach')
         const fitAddonModule = await import('@xterm/addon-fit')
         
         const { Terminal } = xtermModule
-        const { AttachAddon } = attachAddonModule
         const { FitAddon } = fitAddonModule
         
         const term = new Terminal({
@@ -99,83 +87,84 @@ export default function TerminalClient() {
         termRef.current = term
         term.write('\r\n\x1b[1;34m🚀 Initializing OpenCode Terminal...\x1b[0m\r\n')
 
-        const tunnelUrl = 'opencode.tao-shen.com'
-        const wsUrl = `wss://${tunnelUrl}/pty/connect`
+        setStatus('creating-pty')
+        term.write('\r\n\x1b[33mCreating PTY session...\x1b[0m\r\n')
+
+        const ptyResponse = await fetch('https://opencode.tao-shen.com/pty', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: 'Web Terminal',
+            cwd: '/',
+          }),
+        })
+
+        if (!ptyResponse.ok) {
+          throw new Error(`Failed to create PTY: ${ptyResponse.statusText}`)
+        }
+
+        const ptyInfo: PtyInfo = await ptyResponse.json()
+        term.write(`\x1b[32m✓ PTY created: ${ptyInfo.id}\x1b[0m\r\n`)
+
+        const wsUrl = `wss://opencode.tao-shen.com/pty/${ptyInfo.id}/connect`
         
         setStatus('connecting')
         term.write(`\r\n\x1b[33mConnecting to ${wsUrl}...\x1b[0m\r\n`)
 
-        try {
-          const socket = new WebSocket(wsUrl)
-          wsRef.current = socket
+        const socket = new WebSocket(wsUrl)
+        wsRef.current = socket
 
-          socket.onopen = () => {
-            if (!isMounted) return
-            setStatus('connected')
-            term.write('\r\n\x1b[1;32m✅ Connected to OpenCode!\x1b[0m\r\n\r\n')
-            
-            const attachAddon = new AttachAddon(socket, {
-              bidirectional: true,
-            })
-            term.loadAddon(attachAddon)
-            
-            socket.send(JSON.stringify({
-              type: 'resize',
-              cols: term.cols,
-              rows: term.rows
-            }))
-            
-            term.write('\x1b[1;36mWelcome to OpenCode!\x1b[0m\r\n')
-            term.write('Type \x1b[1;33m/help\x1b[0m for available commands.\r\n\r\n')
-            term.focus()
-          }
+        socket.onopen = () => {
+          if (!isMounted) return
+          setStatus('connected')
+          term.write('\r\n\x1b[1;32m✅ Connected to OpenCode!\x1b[0m\r\n\r\n')
+          term.focus()
+        }
 
-          socket.onmessage = (event) => {
-            if (!isMounted) return
-            try {
-              const msg = JSON.parse(event.data)
-              if (msg.type === 'output' && msg.data) {
-                term.write(msg.data)
-              }
-            } catch {
-              term.write(event.data)
-            }
-          }
+        socket.onmessage = (event) => {
+          if (!isMounted) return
+          term.write(event.data)
+        }
 
-          socket.onclose = (event) => {
-            if (!isMounted) return
-            setStatus('disconnected')
-            term.write(`\r\n\x1b[1;31m❌ Connection closed (code: ${event.code})\x1b[0m\r\n`)
-            term.write('\r\n\x1b[33mTo reconnect, refresh the page or click "Reconnect"\x1b[0m\r\n')
-          }
+        socket.onclose = (event) => {
+          if (!isMounted) return
+          setStatus('disconnected')
+          term.write(`\r\n\x1b[1;31m❌ Connection closed (code: ${event.code})\x1b[0m\r\n`)
+          term.write('\r\n\x1b[33mTo reconnect, refresh the page\x1b[0m\r\n')
+        }
 
-          socket.onerror = (error) => {
-            if (!isMounted) return
-            setStatus('error')
-            term.write('\r\n\x1b[1;31m❌ WebSocket error\x1b[0m\r\n')
-            console.error('WebSocket error:', error)
-          }
-
-          term.onResize(({ cols, rows }) => {
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({ type: 'resize', cols, rows }))
-            }
-          })
-
-          const handleResize = () => {
-            fitAddon.fit()
-          }
-          resizeHandlerRef.current = handleResize
-          window.addEventListener('resize', handleResize)
-
-        } catch (error) {
+        socket.onerror = (error) => {
           if (!isMounted) return
           setStatus('error')
-          term.write(`\r\n\x1b[1;31m❌ Failed to connect: ${error}\x1b[0m\r\n`)
+          term.write('\r\n\x1b[1;31m❌ WebSocket error\x1b[0m\r\n')
+          console.error('WebSocket error:', error)
         }
+
+        term.onData((data) => {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(data)
+          }
+        })
+
+        term.onResize(({ cols, rows }) => {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'resize', cols, rows }))
+          }
+        })
+
+        const handleResize = () => {
+          fitAddon.fit()
+        }
+        resizeHandlerRef.current = handleResize
+        window.addEventListener('resize', handleResize)
+
       } catch (error) {
-        console.error('Failed to load xterm:', error)
+        console.error('Failed to initialize terminal:', error)
         setStatus('error')
+        setErrorMessage(String(error))
+        if (termRef.current) {
+          termRef.current.write(`\r\n\x1b[1;31m❌ Error: ${error}\x1b[0m\r\n`)
+        }
       }
     }
 
@@ -193,22 +182,32 @@ export default function TerminalClient() {
         termRef.current.dispose()
       }
     }
-  }, [])
+  }, [mounted])
 
   const reconnect = () => {
     window.location.reload()
   }
 
+  if (!mounted) {
+    return (
+      <div style={styles.loadingContainer}>
+        <div style={styles.spinner} />
+        <p style={styles.loadingText}>Loading terminal...</p>
+      </div>
+    )
+  }
+
   return (
-    <>
+    <div style={styles.container}>
       <div style={styles.statusBar}>
         <div style={getStatusBadgeStyle(status)}>
           <span style={getStatusDotStyle(status)}></span>
+          {status === 'initializing' && 'Initializing...'}
+          {status === 'creating-pty' && 'Creating PTY...'}
           {status === 'connecting' && 'Connecting...'}
           {status === 'connected' && 'Connected'}
           {status === 'disconnected' && 'Disconnected'}
           {status === 'error' && 'Error'}
-          {status === 'initializing' && 'Initializing...'}
         </div>
         {(status === 'disconnected' || status === 'error') && (
           <button style={styles.reconnectButton} onClick={reconnect}>
@@ -216,6 +215,12 @@ export default function TerminalClient() {
           </button>
         )}
       </div>
+
+      {errorMessage && (
+        <div style={styles.errorBox}>
+          <strong>Error:</strong> {errorMessage}
+        </div>
+      )}
 
       <div style={styles.terminalWrapper}>
         <div style={styles.terminalHeader}>
@@ -261,11 +266,66 @@ export default function TerminalClient() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 
+const getStatusBadgeStyle = (status: string): React.CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  padding: '6px 14px',
+  backgroundColor: status === 'connected' ? 'rgba(52, 199, 89, 0.15)' 
+                   : status === 'connecting' || status === 'creating-pty' || status === 'initializing' ? 'rgba(255, 149, 0, 0.15)'
+                   : status === 'error' ? 'rgba(255, 69, 58, 0.15)'
+                   : 'rgba(0, 122, 255, 0.15)',
+  borderRadius: '20px',
+  fontSize: '13px',
+  fontWeight: 500,
+  color: status === 'connected' ? '#34C759' 
+         : status === 'connecting' || status === 'creating-pty' || status === 'initializing' ? '#FF9500'
+         : status === 'error' ? '#FF453A'
+         : '#007AFF',
+})
+
+const getStatusDotStyle = (status: string): React.CSSProperties => ({
+  width: '8px',
+  height: '8px',
+  borderRadius: '50%',
+  backgroundColor: status === 'connected' ? '#34C759' 
+                   : status === 'connecting' || status === 'creating-pty' || status === 'initializing' ? '#FF9500'
+                   : status === 'error' ? '#FF453A'
+                   : '#007AFF',
+  animation: (status === 'connecting' || status === 'creating-pty' || status === 'initializing') ? 'pulse 1.5s ease-in-out infinite' : 'none',
+})
+
 const styles: Record<string, React.CSSProperties> = {
+  container: {
+    width: '100%',
+  },
+  loadingContainer: {
+    minHeight: '500px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0D1117',
+    borderRadius: '16px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+  },
+  spinner: {
+    width: '40px',
+    height: '40px',
+    border: '3px solid rgba(0, 122, 255, 0.2)',
+    borderTopColor: '#007AFF',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+    marginBottom: '16px',
+  },
+  loadingText: {
+    color: '#86868B',
+    fontSize: '14px',
+  },
   statusBar: {
     display: 'flex',
     alignItems: 'center',
@@ -281,6 +341,15 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '13px',
     fontWeight: 500,
     cursor: 'pointer',
+  },
+  errorBox: {
+    padding: '12px',
+    marginBottom: '16px',
+    backgroundColor: 'rgba(255, 69, 58, 0.1)',
+    border: '1px solid rgba(255, 69, 58, 0.3)',
+    borderRadius: '8px',
+    color: '#FF453A',
+    fontSize: '13px',
   },
   terminalWrapper: {
     backgroundColor: '#0D1117',
