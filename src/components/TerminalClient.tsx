@@ -35,8 +35,8 @@ export default function TerminalClient() {
       try {
         setStatus('initializing')
         
-        const xtermModule = await import('@xterm/xterm')
-        const fitAddonModule = await import('@xterm/addon-fit')
+        const xtermModule = await import('xterm')
+        const fitAddonModule = await import('xterm-addon-fit')
         
         const { Terminal } = xtermModule
         const { FitAddon } = fitAddonModule
@@ -90,7 +90,7 @@ export default function TerminalClient() {
         setStatus('creating-pty')
         term.write('\r\n\x1b[33mCreating PTY session...\x1b[0m\r\n')
 
-        const ptyResponse = await fetch('/api/proxy/pty', {
+        const ptyResponse = await fetch('https://opencode.tao-shen.com/pty', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
