@@ -163,14 +163,10 @@ export default function OpenCodeStreamingTerminal() {
       }
     }
 
-    eventSource.onerror = (error) => {
-      console.error('SSE error:', error)
-      // Attempt to reconnect after a delay
-      setTimeout(() => {
-        if (eventSourceRef.current === eventSource) {
-          connectToEvents(sessionId)
-        }
-      }, 3000)
+    eventSource.onerror = () => {
+      // SSE connection failed - this is expected on Vercel due to timeouts
+      // Don't auto-reconnect to avoid spamming, user can manually reconnect
+      console.log('SSE connection closed (this is normal on Vercel)')
     }
 
     return eventSource
@@ -263,10 +259,12 @@ export default function OpenCodeStreamingTerminal() {
     }
 
     // Send to OpenCode
-    if (!currentSessionId) {
+    let sessionId = currentSessionId
+    if (!sessionId) {
       writeOutput('\r\n\x1b[33mCreating session...\x1b[0m')
       const newSessionId = await createSession()
       if (newSessionId) {
+        sessionId = newSessionId
         setCurrentSessionId(newSessionId)
         connectToEvents(newSessionId)
         writeOutput('\x1b[32m done\x1b[0m')
@@ -277,7 +275,7 @@ export default function OpenCodeStreamingTerminal() {
       }
     }
 
-    await sendPrompt(currentSessionId!, trimmedCommand)
+    await sendPrompt(sessionId, trimmedCommand)
   }, [currentSessionId, createSession, connectToEvents, sendPrompt, writeOutput, writePrompt])
 
   const handleCommandRef = useRef(handleCommand)
