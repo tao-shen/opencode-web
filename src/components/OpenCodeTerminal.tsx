@@ -19,10 +19,17 @@ export default function OpenCodeTerminal() {
   const inputBufferRef = useRef<string>('')
   const historyRef = useRef<string[]>([])
   const historyIndexRef = useRef<number>(-1)
+  const statusRef = useRef(status)
+  const handleCommandRef = useRef<(command: string) => Promise<void>>(async () => {})
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Keep statusRef in sync
+  useEffect(() => {
+    statusRef.current = status
+  }, [status])
 
   const writePrompt = useCallback(() => {
     if (termRef.current) {
@@ -200,6 +207,11 @@ export default function OpenCodeTerminal() {
     writePrompt()
   }, [currentSessionId, createSession, sendPrompt, writeOutput, writePrompt])
 
+  // Keep handleCommandRef in sync
+  useEffect(() => {
+    handleCommandRef.current = handleCommand
+  }, [handleCommand])
+
   useEffect(() => {
     if (!mounted || !terminalRef.current) return
     let isMounted = true
@@ -252,7 +264,30 @@ export default function OpenCodeTerminal() {
         const fitAddon = new FitAddon()
         term.loadAddon(fitAddon)
         term.open(terminalRef.current)
-        fitAddon.fit()
+
+        // Delay fit() to ensure DOM is fully rendered with dimensions
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        if (!isMounted) {
+          term.dispose()
+          return
+        }
+
+        // Safe fit with error handling
+        const safeFit = () => {
+          try {
+            if (terminalRef.current && terminalRef.current.offsetWidth > 0 && terminalRef.current.offsetHeight > 0) {
+              fitAddon.fit()
+            }
+          } catch (e) {
+            console.warn('FitAddon fit error:', e)
+          }
+        }
+
+        // Use requestAnimationFrame for better timing
+        requestAnimationFrame(() => {
+          safeFit()
+        })
 
         if (!isMounted) {
           term.dispose()
@@ -297,14 +332,14 @@ export default function OpenCodeTerminal() {
 
         // Handle input
         term.onData((data) => {
-          if (status === 'processing') return
+          if (statusRef.current === 'processing') return
 
           const code = data.charCodeAt(0)
 
           if (code === 13) { // Enter
             const command = inputBufferRef.current
             inputBufferRef.current = ''
-            handleCommand(command)
+            handleCommandRef.current(command)
           } else if (code === 127 || code === 8) { // Backspace
             if (inputBufferRef.current.length > 0) {
               inputBufferRef.current = inputBufferRef.current.slice(0, -1)
@@ -341,9 +376,11 @@ export default function OpenCodeTerminal() {
           }
         })
 
-        // Handle resize
+        // Handle resize with safe fit
         const handleResize = () => {
-          fitAddon.fit()
+          requestAnimationFrame(() => {
+            safeFit()
+          })
         }
         window.addEventListener('resize', handleResize)
 
@@ -366,7 +403,7 @@ export default function OpenCodeTerminal() {
         termRef.current.dispose()
       }
     }
-  }, [mounted, handleCommand, status])
+  }, [mounted])
 
   if (!mounted) {
     return (
@@ -544,8 +581,10 @@ const styles: Record<string, React.CSSProperties> = {
   terminalContainer: {
     padding: '16px',
     minHeight: '450px',
+    height: '450px',
     maxHeight: '60vh',
     overflow: 'hidden',
+    width: '100%',
   },
   helpSection: {
     padding: '20px',
