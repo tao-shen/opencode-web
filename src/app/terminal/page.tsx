@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 
-const TerminalClient = dynamic(() => import('../../components/TerminalClient'), {
+const OpenCodeTerminal = dynamic(() => import('../../components/OpenCodeTerminal'), {
   ssr: false,
   loading: () => (
     <div style={{
@@ -65,7 +65,7 @@ export default function TerminalPage() {
       </nav>
 
       <main style={styles.main}>
-        <TerminalClient />
+        <OpenCodeTerminal />
       </main>
     </div>
   )

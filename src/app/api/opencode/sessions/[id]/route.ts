@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const OPENCODE_SERVER = process.env.OPENCODE_SERVER_URL || 'http://localhost:4096'
+const OPENCODE_SERVER = process.env.OPENCODE_SERVER_URL || 'https://nngpveejjssh.eu-central-1.clawcloudrun.com'
 
 export async function GET(
   request: NextRequest,
