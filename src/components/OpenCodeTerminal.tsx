@@ -247,8 +247,8 @@ export default function OpenCodeTerminal() {
       const result = await promptResponse.json()
       currentMessageIdRef.current = result.id || null
 
-      // If status is "processing", response will come via SSE
-      if (result.status === 'processing') {
+      // If status is "sent" or "processing", response will come via SSE
+      if (result.status === 'sent' || result.status === 'processing') {
         return
       }
 

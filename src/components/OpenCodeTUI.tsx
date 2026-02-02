@@ -480,8 +480,8 @@ export default function OpenCodeTUI() {
 
       const result = await response.json()
 
-      // If status is "processing", the response will come via SSE
-      if (result.status === 'processing') {
+      // If status is "sent" or "processing", the response will come via SSE
+      if (result.status === 'sent' || result.status === 'processing') {
         // Just wait for SSE updates
         return
       }
