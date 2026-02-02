@@ -16,40 +16,49 @@ interface MessagePart {
 // Server URL for direct SSE connection
 const OPENCODE_SERVER = process.env.NEXT_PUBLIC_OPENCODE_SERVER_URL || 'https://nngpveejjssh.eu-central-1.clawcloudrun.com'
 
-// TUI Constants
+// TUI Constants - match OpenTUI exactly
 const CELL_W = 9
 const CELL_H = 18
 const FONT = '14px "SF Mono", Monaco, "Cascadia Code", Consolas, monospace'
 
-// Colors (dark theme)
-const COLORS = {
-  bg: '#0D1117',
-  fg: '#E6EDF3',
-  fgWeak: '#8B949E',
-  fgStrong: '#FFFFFF',
-  border: '#30363D',
-  borderFocus: '#58A6FF',
-  accent: '#58A6FF',
-  success: '#7EE787',
-  warning: '#D29922',
-  error: '#FF7B72',
-  purple: '#BC8CFF',
-  cyan: '#76E3EA',
+// OpenCode Theme Colors (dark mode)
+const THEME = {
+  background: '#0a0a0a',
+  backgroundPanel: '#141414',
+  backgroundElement: '#1e1e1e',
+  primary: '#fab283',       // Orange accent
+  secondary: '#5c9cf5',     // Blue
+  accent: '#9d7cd8',        // Purple
+  text: '#eeeeee',
+  textMuted: '#808080',
+  border: '#484848',
+  borderActive: '#606060',
+  borderSubtle: '#3c3c3c',
+  error: '#e06c75',
+  warning: '#f5a742',
+  success: '#7fd88f',
+  info: '#56b6c2',
 }
 
-// Box drawing characters
-const BOX = {
-  single: { tl: '┌', tr: '┐', bl: '└', br: '┘', h: '─', v: '│' },
-  double: { tl: '╔', tr: '╗', bl: '╚', br: '╝', h: '═', v: '║' },
-  bold: { tl: '┏', tr: '┓', bl: '┗', br: '┛', h: '━', v: '┃' },
-  round: { tl: '╭', tr: '╮', bl: '╰', br: '╯', h: '─', v: '│' },
+// Logo data from OpenCode - with shadow markers
+const LOGO = {
+  left: ["                   ", "█▀▀█ █▀▀█ █▀▀█ █▀▀▄", "█__█ █__█ █^^^ █__█", "▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀~~▀"],
+  right: ["             ▄     ", "█▀▀▀ █▀▀█ █▀▀█ █▀▀█", "█___ █__█ █__█ █^^^", "▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀"],
 }
 
-interface ChatMessage {
-  role: 'user' | 'assistant' | 'system'
+// Placeholders like OpenCode
+const PLACEHOLDERS = [
+  "Fix a TODO in the codebase",
+  "What is the tech stack of this project?",
+  "Fix broken tests",
+]
+
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
   content: string
-  toolCalls?: { name: string; args: string; result?: string; state: string }[]
-  timestamp: Date
+  parts?: { type: string; text?: string; state?: string; toolName?: string }[]
+  time: { created: number; completed?: number }
 }
 
 class TUIRenderer {
@@ -82,7 +91,7 @@ class TUIRenderer {
   }
 
   clear() {
-    this.ctx.fillStyle = COLORS.bg
+    this.ctx.fillStyle = THEME.background
     this.ctx.fillRect(0, 0, this.canvas.width / this.dpr, this.canvas.height / this.dpr)
   }
 
@@ -104,108 +113,184 @@ class TUIRenderer {
   }
 
   drawText(text: string, x: number, y: number, fg: string, maxWidth?: number) {
-    const max = maxWidth || (this.cols - x)
+    const max = maxWidth ?? (this.cols - x)
     for (let i = 0; i < Math.min(text.length, max); i++) {
       this.drawChar(text[i], x + i, y, fg)
     }
+    return Math.min(text.length, max)
   }
 
-  drawBox(x: number, y: number, w: number, h: number, fg: string, style: 'single' | 'double' | 'bold' | 'round' = 'round', title?: string, titleColor?: string) {
-    const c = BOX[style]
+  // Draw logo with shadow effects (matching OpenCode exactly)
+  drawLogo(centerX: number, y: number) {
+    const shadow = this.tintColor(THEME.background, THEME.textMuted, 0.25)
 
-    // Corners
-    this.drawChar(c.tl, x, y, fg)
-    this.drawChar(c.tr, x + w - 1, y, fg)
-    this.drawChar(c.bl, x, y + h - 1, fg)
-    this.drawChar(c.br, x + w - 1, y + h - 1, fg)
-
-    // Edges
-    for (let i = 1; i < w - 1; i++) {
-      this.drawChar(c.h, x + i, y, fg)
-      this.drawChar(c.h, x + i, y + h - 1, fg)
-    }
-    for (let i = 1; i < h - 1; i++) {
-      this.drawChar(c.v, x, y + i, fg)
-      this.drawChar(c.v, x + w - 1, y + i, fg)
-    }
-
-    // Title
-    if (title) {
-      const paddedTitle = ` ${title} `
-      const titleX = x + 2
-      for (let i = 0; i < paddedTitle.length && titleX + i < x + w - 1; i++) {
-        this.drawChar(paddedTitle[i], titleX + i, y, titleColor || fg)
+    const renderLine = (line: string, x: number, y: number, fg: string, bold: boolean) => {
+      let cx = x
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i]
+        if (char === '_') {
+          // Full shadow cell
+          this.drawChar(' ', cx, y, fg, shadow)
+        } else if (char === '^') {
+          // Letter top, shadow bottom
+          this.drawChar('▀', cx, y, fg, shadow)
+        } else if (char === '~') {
+          // Shadow top only
+          this.drawChar('▀', cx, y, shadow)
+        } else {
+          this.drawChar(char, cx, y, fg)
+        }
+        cx++
       }
     }
+
+    const logoWidth = LOGO.left[0].length + 1 + LOGO.right[0].length
+    const startX = centerX - Math.floor(logoWidth / 2)
+
+    for (let i = 0; i < LOGO.left.length; i++) {
+      renderLine(LOGO.left[i], startX, y + i, THEME.textMuted, false)
+      renderLine(LOGO.right[i], startX + LOGO.left[i].length + 1, y + i, THEME.text, true)
+    }
+
+    return LOGO.left.length
   }
 
-  // Draw wrapped text, returns number of lines used
-  drawWrappedText(text: string, x: number, y: number, maxWidth: number, fg: string): number {
-    const words = text.split(' ')
-    let line = ''
-    let lineNum = 0
+  tintColor(bg: string, fg: string, amount: number): string {
+    // Simple tint - blend fg into bg
+    const parse = (hex: string) => {
+      const h = hex.replace('#', '')
+      return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+    }
+    const [br, bg2, bb] = parse(bg)
+    const [fr, fg2, fb] = parse(fg)
+    const r = Math.round(br + (fr - br) * amount)
+    const g = Math.round(bg2 + (fg2 - bg2) * amount)
+    const b = Math.round(bb + (fb - bb) * amount)
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+  }
 
-    for (const word of words) {
-      const testLine = line ? `${line} ${word}` : word
-      if (testLine.length > maxWidth && line) {
-        this.drawText(line, x, y + lineNum, fg)
-        line = word
-        lineNum++
-      } else {
-        line = testLine
+  // Draw prompt input box (OpenCode style)
+  drawPromptBox(x: number, y: number, width: number, value: string, placeholder: string, focused: boolean) {
+    const boxBg = THEME.backgroundElement
+    const borderColor = focused ? THEME.primary : THEME.borderSubtle
+
+    // Draw background
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < width; col++) {
+        this.drawChar(' ', x + col, y + row, THEME.text, boxBg)
       }
     }
-    if (line) {
-      this.drawText(line, x, y + lineNum, fg)
-      lineNum++
+
+    // Draw border (subtle line at top and bottom)
+    for (let col = 0; col < width; col++) {
+      this.drawChar('─', x + col, y, borderColor)
+      this.drawChar('─', x + col, y + 2, borderColor)
     }
-    return lineNum
+
+    // Draw text or placeholder
+    const displayText = value || placeholder
+    const textColor = value ? THEME.text : THEME.textMuted
+    this.drawText(displayText, x + 1, y + 1, textColor, width - 2)
+
+    // Draw cursor if focused
+    if (focused) {
+      const cursorX = x + 1 + value.length
+      if (cursorX < x + width - 1) {
+        this.drawChar('│', cursorX, y + 1, THEME.primary)
+      }
+    }
+
+    return 3
   }
 
-  // Draw a message bubble
-  drawMessage(msg: ChatMessage, x: number, y: number, width: number): number {
+  // Draw a message (OpenCode style - simple text with role prefix)
+  drawMessage(msg: Message, x: number, y: number, width: number): number {
     const isUser = msg.role === 'user'
-    const boxColor = isUser ? COLORS.accent : COLORS.border
-    const contentColor = isUser ? COLORS.fgStrong : COLORS.fg
-    const label = isUser ? '  You' : '󰚩  AI'
-    const labelColor = isUser ? COLORS.accent : COLORS.purple
+    const prefix = isUser ? '› ' : ''
+    const prefixColor = isUser ? THEME.primary : THEME.accent
+    const textColor = THEME.text
 
-    // Calculate content height
-    const contentWidth = width - 4
+    // Draw prefix
+    if (prefix) {
+      this.drawText(prefix, x, y, prefixColor)
+    }
+
+    // Wrap and draw content
+    const contentX = x + prefix.length
+    const contentWidth = width - prefix.length
     const lines = this.wrapText(msg.content, contentWidth)
-    let totalHeight = lines.length + 2 // content + padding
 
-    // Add tool calls height
-    if (msg.toolCalls) {
-      for (const tool of msg.toolCalls) {
-        totalHeight += 3 // tool header + spacing
-      }
+    for (let i = 0; i < lines.length; i++) {
+      this.drawText(lines[i], i === 0 ? contentX : x, y + i, textColor, contentWidth)
     }
 
-    const boxHeight = Math.max(totalHeight + 2, 4)
+    return Math.max(lines.length, 1) + 1 // +1 for spacing
+  }
 
-    // Draw box
-    this.drawBox(x, y, width, boxHeight, boxColor, 'round', label, labelColor)
+  // Draw streaming text with spinner
+  drawStreaming(text: string, x: number, y: number, width: number, frame: number): number {
+    const spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'][frame % 10]
 
-    // Draw content
-    let currentY = y + 1
-    for (const line of lines) {
-      this.drawText(line, x + 2, currentY, contentColor, contentWidth)
-      currentY++
+    if (!text) {
+      // Just show spinner
+      this.drawText(spinner, x, y, THEME.primary)
+      return 1
     }
 
-    // Draw tool calls
-    if (msg.toolCalls) {
-      for (const tool of msg.toolCalls) {
-        currentY++
-        const stateIcon = tool.state === 'result' ? '✓' : tool.state === 'calling' ? '⚡' : '…'
-        const stateColor = tool.state === 'result' ? COLORS.success : COLORS.warning
-        this.drawText(`${stateIcon} ${tool.name}`, x + 2, currentY, stateColor)
-        currentY++
-      }
+    // Show text with cursor
+    const lines = this.wrapText(text, width)
+    for (let i = 0; i < lines.length; i++) {
+      this.drawText(lines[i], x, y + i, THEME.text, width)
     }
 
-    return boxHeight + 1
+    // Cursor at end of last line
+    const lastLine = lines[lines.length - 1] || ''
+    this.drawChar('▋', x + lastLine.length, y + lines.length - 1, THEME.primary)
+
+    return lines.length
+  }
+
+  // Draw footer bar (OpenCode style)
+  drawFooter(y: number, directory: string, sessionId: string | null, status: string, version: string) {
+    // Draw background
+    for (let col = 0; col < this.cols; col++) {
+      this.drawChar(' ', col, y, THEME.text, THEME.background)
+    }
+
+    // Left: directory
+    let x = 2
+    x += this.drawText(directory, x, y, THEME.textMuted)
+    x += 2
+
+    // Middle: status indicator
+    if (sessionId) {
+      const statusColor = status === 'ready' ? THEME.success
+                        : status === 'processing' ? THEME.warning
+                        : THEME.error
+      this.drawText('●', x, y, statusColor)
+      x += 2
+    }
+
+    // Right: version
+    const versionText = version
+    this.drawText(versionText, this.cols - versionText.length - 2, y, THEME.textMuted)
+  }
+
+  // Draw header bar for session view
+  drawHeader(y: number, model: string, sessionTitle?: string) {
+    // Draw background
+    for (let col = 0; col < this.cols; col++) {
+      this.drawChar(' ', col, y, THEME.text, THEME.backgroundPanel)
+    }
+
+    // Left: session title or "New Session"
+    let x = 2
+    const title = sessionTitle || 'New Session'
+    x += this.drawText(title, x, y, THEME.text)
+
+    // Right: model name
+    const modelText = model
+    this.drawText(modelText, this.cols - modelText.length - 2, y, THEME.textMuted)
   }
 
   // Wrap text into lines
@@ -235,108 +320,23 @@ class TUIRenderer {
 
     return lines
   }
-
-  // Draw input area
-  drawInput(x: number, y: number, width: number, value: string, focused: boolean, placeholder?: string) {
-    const boxColor = focused ? COLORS.borderFocus : COLORS.border
-    this.drawBox(x, y, width, 3, boxColor, focused ? 'bold' : 'round')
-
-    const displayText = value || placeholder || ''
-    const textColor = value ? COLORS.fg : COLORS.fgWeak
-
-    this.drawText(displayText.slice(0, width - 4), x + 2, y + 1, textColor)
-
-    // Cursor
-    if (focused) {
-      const cursorX = x + 2 + value.length
-      if (cursorX < x + width - 2) {
-        this.drawChar('▌', cursorX, y + 1, COLORS.accent)
-      }
-    }
-  }
-
-  // Draw status bar
-  drawStatusBar(y: number, sessionId: string | null, status: string) {
-    const statusColor = status === 'ready' ? COLORS.success
-                       : status === 'processing' ? COLORS.warning
-                       : status === 'error' ? COLORS.error
-                       : COLORS.fgWeak
-
-    // Left side - status
-    const statusIcon = status === 'ready' ? '●' : status === 'processing' ? '◐' : '○'
-    this.drawText(`${statusIcon} ${status.charAt(0).toUpperCase() + status.slice(1)}`, 2, y, statusColor)
-
-    // Right side - session
-    if (sessionId) {
-      const sessionText = `Session: ${sessionId.substring(0, 8)}…`
-      this.drawText(sessionText, this.cols - sessionText.length - 2, y, COLORS.fgWeak)
-    }
-  }
-
-  // Draw header
-  drawHeader(title: string) {
-    this.drawBox(0, 0, this.cols, 3, COLORS.border, 'round')
-
-    // Logo
-    this.drawText('󰚩', 2, 1, COLORS.purple)
-
-    // Title
-    this.drawText(title, 4, 1, COLORS.fgStrong)
-
-    // Version badge
-    const version = 'v1.0'
-    this.drawText(version, this.cols - version.length - 2, 1, COLORS.fgWeak)
-  }
-
-  // Draw scrollbar
-  drawScrollbar(x: number, y: number, height: number, scrollPos: number, contentHeight: number) {
-    if (contentHeight <= height) return
-
-    const thumbHeight = Math.max(2, Math.floor(height * height / contentHeight))
-    const thumbPos = Math.floor((height - thumbHeight) * scrollPos / (contentHeight - height))
-
-    for (let i = 0; i < height; i++) {
-      const char = i >= thumbPos && i < thumbPos + thumbHeight ? '█' : '░'
-      this.drawChar(char, x, y + i, COLORS.fgWeak)
-    }
-  }
-
-  // Draw thinking indicator
-  drawThinking(x: number, y: number, frame: number) {
-    const dots = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-    const spinner = dots[frame % dots.length]
-    this.drawText(`${spinner} Thinking...`, x, y, COLORS.warning)
-  }
-
-  // Draw streaming text with cursor
-  drawStreamingText(text: string, x: number, y: number, width: number, fg: string): number {
-    const lines = this.wrapText(text, width)
-    for (let i = 0; i < lines.length; i++) {
-      this.drawText(lines[i], x, y + i, fg)
-    }
-    // Blinking cursor at end
-    if (lines.length > 0) {
-      const lastLine = lines[lines.length - 1]
-      this.drawChar('▌', x + lastLine.length, y + lines.length - 1, COLORS.accent)
-    }
-    return lines.length
-  }
 }
 
 export default function OpenCodeTUI() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rendererRef = useRef<TUIRenderer | null>(null)
+  const [view, setView] = useState<'home' | 'session'>('home')
   const [status, setStatus] = useState<'initializing' | 'ready' | 'processing' | 'error'>('initializing')
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
-  const [scrollOffset, setScrollOffset] = useState(0)
   const [animFrame, setAnimFrame] = useState(0)
   const [streamingText, setStreamingText] = useState('')
+  const [placeholder] = useState(() => PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)])
   const eventSourceRef = useRef<EventSource | null>(null)
   const statusRef = useRef(status)
   const streamedTextRef = useRef<Map<string, string>>(new Map())
-  const lastDisplayedLengthRef = useRef<Map<string, number>>(new Map())
+  const scrollOffsetRef = useRef(0)
 
   useEffect(() => {
     statusRef.current = status
@@ -345,8 +345,12 @@ export default function OpenCodeTUI() {
   // Animation loop
   useEffect(() => {
     let frameId: number
-    const animate = () => {
-      setAnimFrame(f => f + 1)
+    let lastTime = 0
+    const animate = (time: number) => {
+      if (time - lastTime > 100) { // ~10fps for spinner
+        setAnimFrame(f => f + 1)
+        lastTime = time
+      }
       frameId = requestAnimationFrame(animate)
     }
     frameId = requestAnimationFrame(animate)
@@ -364,7 +368,7 @@ export default function OpenCodeTUI() {
     fetch('/api/proxy/global/health')
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(() => setStatus('ready'))
-      .catch(() => setStatus('ready')) // Still allow usage
+      .catch(() => setStatus('ready'))
 
     return () => {
       if (eventSourceRef.current) {
@@ -379,14 +383,12 @@ export default function OpenCodeTUI() {
       const response = await fetch('/api/opencode/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: `Web TUI Session - ${new Date().toISOString()}` }),
+        body: JSON.stringify({ title: `Web Session` }),
       })
-
-      if (!response.ok) throw new Error('Failed to create session')
+      if (!response.ok) throw new Error('Failed')
       const data = await response.json()
       return data.id
-    } catch (error) {
-      console.error('Failed to create session:', error)
+    } catch {
       return null
     }
   }, [])
@@ -403,49 +405,17 @@ export default function OpenCodeTUI() {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
-
-        if (data.properties?.sessionID && data.properties.sessionID !== sessionId) {
-          return
-        }
+        if (data.properties?.sessionID && data.properties.sessionID !== sessionId) return
 
         switch (data.type) {
           case 'message.part.updated': {
-            const part = data.properties?.part as MessagePart | undefined
-            const partIndex = data.properties?.partIndex as number | undefined
-
+            const part = data.properties?.part
+            const partIndex = data.properties?.partIndex
             if (!part || partIndex === undefined) break
-
-            const partKey = `${partIndex}`
 
             if (part.type === 'text' && part.text) {
               setStreamingText(part.text)
-              streamedTextRef.current.set(partKey, part.text)
-            } else if (part.type === 'tool-invocation' && part.toolInvocation) {
-              const tool = part.toolInvocation
-              setMessages(msgs => {
-                const newMsgs = [...msgs]
-                const lastMsg = newMsgs[newMsgs.length - 1]
-                if (lastMsg && lastMsg.role === 'assistant') {
-                  const toolCalls = lastMsg.toolCalls || []
-                  const existingIdx = toolCalls.findIndex(t => t.name === tool.toolName)
-                  if (existingIdx >= 0) {
-                    toolCalls[existingIdx] = {
-                      name: tool.toolName || '',
-                      args: JSON.stringify(tool.args || {}),
-                      result: tool.result ? JSON.stringify(tool.result) : undefined,
-                      state: tool.state || 'calling'
-                    }
-                  } else {
-                    toolCalls.push({
-                      name: tool.toolName || '',
-                      args: JSON.stringify(tool.args || {}),
-                      state: tool.state || 'calling'
-                    })
-                  }
-                  lastMsg.toolCalls = toolCalls
-                }
-                return newMsgs
-              })
+              streamedTextRef.current.set(`${partIndex}`, part.text)
             }
             break
           }
@@ -454,7 +424,6 @@ export default function OpenCodeTUI() {
             const state = data.properties?.session?.state
             if (state === 'completed' || state === 'idle') {
               if (statusRef.current === 'processing') {
-                // Finalize streaming text as message
                 const finalText = Array.from(streamedTextRef.current.values()).join('')
                 if (finalText) {
                   setMessages(msgs => {
@@ -462,6 +431,7 @@ export default function OpenCodeTUI() {
                     const lastMsg = newMsgs[newMsgs.length - 1]
                     if (lastMsg && lastMsg.role === 'assistant') {
                       lastMsg.content = finalText
+                      lastMsg.time.completed = Date.now()
                     }
                     return newMsgs
                   })
@@ -475,7 +445,7 @@ export default function OpenCodeTUI() {
           }
         }
       } catch (e) {
-        console.error('Failed to parse SSE event:', e)
+        console.error('SSE parse error:', e)
       }
     }
 
@@ -493,19 +463,11 @@ export default function OpenCodeTUI() {
     streamedTextRef.current.clear()
     setStreamingText('')
 
-    // Add user message
-    setMessages(msgs => [...msgs, {
-      role: 'user',
-      content: prompt,
-      timestamp: new Date()
-    }])
-
-    // Add placeholder assistant message
-    setMessages(msgs => [...msgs, {
-      role: 'assistant',
-      content: '',
-      timestamp: new Date()
-    }])
+    setMessages(msgs => [
+      ...msgs,
+      { id: `user-${Date.now()}`, role: 'user', content: prompt, time: { created: Date.now() } },
+      { id: `assistant-${Date.now()}`, role: 'assistant', content: '', time: { created: Date.now() } }
+    ])
 
     try {
       const response = await fetch(`/api/opencode/sessions/${sessionId}/prompt`, {
@@ -514,38 +476,30 @@ export default function OpenCodeTUI() {
         body: JSON.stringify({ parts: [{ type: 'text', text: prompt }] }),
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to send prompt')
-      }
+      if (!response.ok) throw new Error('Failed')
 
       const result = await response.json()
-
-      // If SSE didn't catch the response, use the direct response
-      if (result.parts && Array.isArray(result.parts)) {
-        const textParts = result.parts
-          .filter((p: MessagePart) => p.type === 'text' && p.text)
-          .map((p: MessagePart) => p.text)
-          .join('\n')
-
-        if (textParts && !streamingText) {
+      if (result.parts?.length > 0 && !streamingText) {
+        const text = result.parts.filter((p: MessagePart) => p.type === 'text').map((p: MessagePart) => p.text).join('\n')
+        if (text) {
           setMessages(msgs => {
             const newMsgs = [...msgs]
             const lastMsg = newMsgs[newMsgs.length - 1]
             if (lastMsg && lastMsg.role === 'assistant') {
-              lastMsg.content = textParts
+              lastMsg.content = text
+              lastMsg.time.completed = Date.now()
             }
             return newMsgs
           })
           setStatus('ready')
         }
       }
-    } catch (error) {
-      console.error('Failed to send prompt:', error)
+    } catch {
       setMessages(msgs => {
         const newMsgs = [...msgs]
         const lastMsg = newMsgs[newMsgs.length - 1]
         if (lastMsg && lastMsg.role === 'assistant') {
-          lastMsg.content = `Error: ${String(error)}`
+          lastMsg.content = 'Error: Failed to send message'
         }
         return newMsgs
       })
@@ -560,6 +514,7 @@ export default function OpenCodeTUI() {
     setStatus('processing')
     const prompt = inputValue
     setInputValue('')
+    setView('session')
 
     let sessionId = currentSessionId
     if (!sessionId) {
@@ -584,6 +539,10 @@ export default function OpenCodeTUI() {
         handleSubmit()
       } else if (e.key === 'Backspace') {
         setInputValue(v => v.slice(0, -1))
+      } else if (e.key === 'Escape') {
+        if (view === 'session' && messages.length === 0) {
+          setView('home')
+        }
       } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
         setInputValue(v => v + e.key)
       }
@@ -591,7 +550,7 @@ export default function OpenCodeTUI() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleSubmit])
+  }, [handleSubmit, view, messages.length])
 
   // Render loop
   useEffect(() => {
@@ -600,42 +559,51 @@ export default function OpenCodeTUI() {
 
     renderer.clear()
 
-    // Header
-    renderer.drawHeader('OpenCode')
+    if (view === 'home') {
+      // Home view - centered logo and prompt
+      const centerX = Math.floor(renderer.cols / 2)
+      const centerY = Math.floor(renderer.rows / 2) - 5
 
-    // Messages area
-    const messagesY = 4
-    const messagesHeight = renderer.rows - 10
-    const messagesWidth = renderer.cols - 4
+      // Draw logo
+      const logoHeight = renderer.drawLogo(centerX, centerY)
 
-    // Draw messages box
-    renderer.drawBox(1, messagesY - 1, renderer.cols - 2, messagesHeight + 2, COLORS.border, 'round', ' Chat ', COLORS.fgWeak)
+      // Draw prompt box below logo
+      const promptY = centerY + logoHeight + 3
+      const promptWidth = Math.min(75, renderer.cols - 4)
+      const promptX = centerX - Math.floor(promptWidth / 2)
+      renderer.drawPromptBox(promptX, promptY, promptWidth, inputValue, placeholder, true)
 
-    // Draw messages
-    let currentY = messagesY
-    const visibleMessages = messages.slice(-10) // Show last 10 messages
+      // Draw footer
+      renderer.drawFooter(renderer.rows - 1, process.cwd?.() || '~', null, status, 'v1.1.48')
+    } else {
+      // Session view
+      // Header
+      renderer.drawHeader(0, 'claude-sonnet-4-20250514', undefined)
 
-    for (const msg of visibleMessages) {
-      if (currentY >= messagesY + messagesHeight - 4) break
-      const height = renderer.drawMessage(msg, 3, currentY, messagesWidth - 4)
-      currentY += height
+      // Messages area
+      const contentX = 2
+      const contentWidth = renderer.cols - 4
+      let y = 2
+
+      for (const msg of messages) {
+        if (y >= renderer.rows - 5) break
+        const height = renderer.drawMessage(msg, contentX, y, contentWidth)
+        y += height
+      }
+
+      // Streaming text
+      if (status === 'processing') {
+        renderer.drawStreaming(streamingText, contentX, y, contentWidth, animFrame)
+      }
+
+      // Prompt at bottom
+      const promptY = renderer.rows - 4
+      renderer.drawPromptBox(2, promptY, renderer.cols - 4, inputValue, placeholder, true)
+
+      // Footer
+      renderer.drawFooter(renderer.rows - 1, '~', currentSessionId, status, 'v1.1.48')
     }
-
-    // Draw streaming text
-    if (status === 'processing' && streamingText) {
-      renderer.drawStreamingText(streamingText, 5, currentY, messagesWidth - 8, COLORS.fg)
-    } else if (status === 'processing') {
-      renderer.drawThinking(5, currentY, animFrame)
-    }
-
-    // Input area
-    const inputY = renderer.rows - 5
-    renderer.drawInput(1, inputY, renderer.cols - 2, inputValue, true, 'Type your message...')
-
-    // Status bar
-    renderer.drawStatusBar(renderer.rows - 1, currentSessionId, status)
-
-  }, [messages, inputValue, status, currentSessionId, animFrame, streamingText])
+  }, [view, messages, inputValue, status, currentSessionId, animFrame, streamingText, placeholder])
 
   return (
     <div style={styles.container}>
@@ -644,9 +612,6 @@ export default function OpenCodeTUI() {
         style={styles.canvas}
         tabIndex={0}
       />
-      <div style={styles.hint}>
-        Press <kbd style={styles.kbd}>Enter</kbd> to send • <kbd style={styles.kbd}>Ctrl+C</kbd> to cancel
-      </div>
     </div>
   )
 }
@@ -654,35 +619,14 @@ export default function OpenCodeTUI() {
 const styles: Record<string, React.CSSProperties> = {
   container: {
     width: '100%',
-    height: '600px',
-    backgroundColor: COLORS.bg,
-    borderRadius: '12px',
+    height: '100%',
+    backgroundColor: THEME.background,
     overflow: 'hidden',
-    border: `1px solid ${COLORS.border}`,
   },
   canvas: {
     width: '100%',
-    height: 'calc(100% - 40px)',
+    height: '100%',
     display: 'block',
-  },
-  hint: {
-    height: '40px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
-    color: COLORS.fgWeak,
-    fontSize: '12px',
-    borderTop: `1px solid ${COLORS.border}`,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  kbd: {
-    display: 'inline-block',
-    padding: '2px 6px',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: '4px',
-    fontFamily: 'SF Mono, Monaco, monospace',
-    fontSize: '11px',
-    border: `1px solid ${COLORS.border}`,
+    outline: 'none',
   },
 }
