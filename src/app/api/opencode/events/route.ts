@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server'
 
-const OPENCODE_SERVER = process.env.OPENCODE_SERVER_URL || 'http://localhost:4096'
+const OPENCODE_SERVER = process.env.OPENCODE_SERVER_URL || 'https://nngpveejjssh.eu-central-1.clawcloudrun.com'
+
+export const runtime = 'edge'
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
