@@ -479,7 +479,15 @@ export default function OpenCodeTUI() {
       if (!response.ok) throw new Error('Failed')
 
       const result = await response.json()
-      if (result.parts?.length > 0 && !streamingText) {
+
+      // If status is "processing", the response will come via SSE
+      if (result.status === 'processing') {
+        // Just wait for SSE updates
+        return
+      }
+
+      // Direct response with parts
+      if (result.parts?.length > 0) {
         const text = result.parts.filter((p: MessagePart) => p.type === 'text').map((p: MessagePart) => p.text).join('\n')
         if (text) {
           setMessages(msgs => {
@@ -494,7 +502,8 @@ export default function OpenCodeTUI() {
           setStatus('ready')
         }
       }
-    } catch {
+    } catch (error) {
+      console.error('Send prompt error:', error)
       setMessages(msgs => {
         const newMsgs = [...msgs]
         const lastMsg = newMsgs[newMsgs.length - 1]
@@ -505,7 +514,7 @@ export default function OpenCodeTUI() {
       })
       setStatus('error')
     }
-  }, [streamingText])
+  }, [])
 
   // Handle submit
   const handleSubmit = useCallback(async () => {

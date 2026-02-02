@@ -247,6 +247,11 @@ export default function OpenCodeTerminal() {
       const result = await promptResponse.json()
       currentMessageIdRef.current = result.id || null
 
+      // If status is "processing", response will come via SSE
+      if (result.status === 'processing') {
+        return
+      }
+
       // If we got a direct response (SSE might not be working), display it
       if (result.parts && Array.isArray(result.parts)) {
         const hasText = result.parts.some((p: MessagePart) => p.type === 'text' && p.text)
