@@ -71,7 +71,7 @@ export default function OpenCodeTerminal() {
 
   const sendPrompt = useCallback(async (sessionId: string, prompt: string): Promise<string> => {
     try {
-      // Send the prompt
+      // Send the prompt - the response includes the assistant message
       const promptResponse = await fetch(`/api/opencode/sessions/${sessionId}/prompt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -79,39 +79,51 @@ export default function OpenCodeTerminal() {
       })
 
       if (!promptResponse.ok) {
-        throw new Error('Failed to send prompt')
+        const errorText = await promptResponse.text()
+        throw new Error(`Failed to send prompt: ${errorText}`)
       }
 
-      // Poll for response
+      const result = await promptResponse.json()
+
+      // The prompt response directly contains the assistant message
+      if (result.parts && Array.isArray(result.parts)) {
+        const textParts = result.parts
+          .filter((part: MessagePart) => part.type === 'text')
+          .map((part: MessagePart) => part.text || '')
+          .filter((text: string) => text.length > 0)
+
+        if (textParts.length > 0) {
+          return textParts.join('\n')
+        }
+      }
+
+      // Fallback: poll the messages endpoint
       let attempts = 0
-      const maxAttempts = 120 // 2 minutes max wait
+      const maxAttempts = 60 // 1 minute max wait
 
       while (attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 1000))
         attempts++
 
-        const sessionResponse = await fetch(`/api/opencode/sessions/${sessionId}`)
-        if (!sessionResponse.ok) continue
+        const messagesResponse = await fetch(`/api/opencode/sessions/${sessionId}/messages`)
+        if (!messagesResponse.ok) continue
 
-        const sessionData = await sessionResponse.json()
+        const messagesData = await messagesResponse.json()
 
-        if (sessionData.messages && Array.isArray(sessionData.messages)) {
-          const assistantMessages = sessionData.messages.filter((m: { role?: string }) => m.role === 'assistant')
-          if (assistantMessages.length > 0) {
-            const lastMsg = assistantMessages[assistantMessages.length - 1]
+        if (Array.isArray(messagesData)) {
+          const assistantMsgs = messagesData.filter((m: { info?: { role?: string } }) => m.info?.role === 'assistant')
+          if (assistantMsgs.length > 0) {
+            const lastMsg = assistantMsgs[assistantMsgs.length - 1]
 
-            let content = ''
             if (lastMsg.parts && Array.isArray(lastMsg.parts)) {
-              content = lastMsg.parts
+              const textParts = lastMsg.parts
                 .filter((part: MessagePart) => part.type === 'text')
-                .map((part: MessagePart) => part.text || part.content || '')
-                .join('\n')
-            } else if (lastMsg.content) {
-              content = lastMsg.content
-            }
+                .map((part: MessagePart) => part.text || '')
+                .filter((text: string) => text.length > 0)
 
-            if (content) {
-              return content
+              if (textParts.length > 0) {
+                return textParts.join('\n')
+              }
             }
           }
         }
