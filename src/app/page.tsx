@@ -35,7 +35,7 @@ export default function HomePage() {
       .finally(() => setChecking(false))
   }, [])
 
-  const serverUrl = 'https://opencode.tao-shen.com'
+  const serverUrl = 'https://nngpveejjssh.eu-central-1.clawcloudrun.com'
 
   return (
     <div style={styles.container}>
