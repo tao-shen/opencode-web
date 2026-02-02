@@ -12,6 +12,20 @@ export async function POST(
     const { id } = await params
     const body = await request.json()
 
+    // Extract model info if provided
+    const { model, providerID, ...messageBody } = body
+
+    // Build the message payload
+    const payload: Record<string, unknown> = { ...messageBody }
+
+    // Add model info if provided
+    if (model && providerID) {
+      payload.model = {
+        modelID: model,
+        providerID: providerID,
+      }
+    }
+
     // Fire and forget - don't wait for response
     // The client will get updates via SSE
     fetch(`${OPENCODE_SERVER}/session/${id}/message`, {
@@ -19,7 +33,7 @@ export async function POST(
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     }).catch(err => {
       console.error('Background message send error:', err)
     })
