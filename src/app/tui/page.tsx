@@ -3,36 +3,36 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 
-const OpenCodeTerminal = dynamic(() => import('../../components/OpenCodeTerminal'), {
+const OpenCodeTUI = dynamic(() => import('../../components/OpenCodeTUI'), {
   ssr: false,
   loading: () => (
     <div style={{
-      minHeight: '500px',
+      height: '600px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: '#0D1117',
-      borderRadius: '16px',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
+      borderRadius: '12px',
+      border: '1px solid #30363D',
     }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{
           width: '40px',
           height: '40px',
-          border: '3px solid rgba(0, 122, 255, 0.2)',
-          borderTopColor: '#007AFF',
+          border: '3px solid rgba(88, 166, 255, 0.2)',
+          borderTopColor: '#58A6FF',
           borderRadius: '50%',
           animation: 'spin 1s linear infinite',
           margin: '0 auto 16px',
         }} />
-        <p style={{ color: '#86868B', fontSize: '14px' }}>Loading terminal...</p>
+        <p style={{ color: '#8B949E', fontSize: '14px' }}>Loading TUI...</p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     </div>
   ),
 })
 
-export default function TerminalPage() {
+export default function TUIPage() {
   return (
     <div style={styles.container}>
       <nav style={styles.nav}>
@@ -41,8 +41,8 @@ export default function TerminalPage() {
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#gradient)" strokeWidth="1.5">
               <defs>
                 <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#007AFF" />
-                  <stop offset="100%" stopColor="#5856D6" />
+                  <stop offset="0%" stopColor="#58A6FF" />
+                  <stop offset="100%" stopColor="#BC8CFF" />
                 </linearGradient>
               </defs>
               <rect x="2" y="3" width="20" height="14" rx="3" />
@@ -52,11 +52,11 @@ export default function TerminalPage() {
             <span style={styles.logoText}>OpenCode</span>
           </Link>
           <span style={styles.breadcrumb}>/</span>
-          <span style={styles.currentPage}>Terminal</span>
+          <span style={styles.currentPage}>TUI</span>
         </div>
         <div style={styles.navRight}>
-          <Link href="/tui" style={styles.navLink}>
-            Canvas TUI
+          <Link href="/terminal" style={styles.navLink}>
+            Classic Terminal
           </Link>
           <Link href="/" style={styles.backLink}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -68,7 +68,16 @@ export default function TerminalPage() {
       </nav>
 
       <main style={styles.main}>
-        <OpenCodeTerminal />
+        <div style={styles.header}>
+          <h1 style={styles.title}>OpenCode TUI</h1>
+          <p style={styles.subtitle}>
+            Canvas-based terminal user interface inspired by{' '}
+            <a href="https://github.com/anomalyco/opentui" target="_blank" rel="noopener noreferrer" style={styles.link}>
+              OpenTUI
+            </a>
+          </p>
+        </div>
+        <OpenCodeTUI />
       </main>
     </div>
   )
@@ -142,8 +151,28 @@ const styles: Record<string, React.CSSProperties> = {
   },
   main: {
     paddingTop: '64px',
-    maxWidth: '1200px',
+    maxWidth: '1000px',
     margin: '0 auto',
-    padding: '80px 40px 40px',
+    padding: '100px 40px 40px',
+  },
+  header: {
+    marginBottom: '24px',
+  },
+  title: {
+    fontSize: '28px',
+    fontWeight: 600,
+    marginBottom: '8px',
+    background: 'linear-gradient(135deg, #58A6FF, #BC8CFF)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+  },
+  subtitle: {
+    fontSize: '14px',
+    color: '#8B949E',
+  },
+  link: {
+    color: '#58A6FF',
+    textDecoration: 'none',
   },
 }
