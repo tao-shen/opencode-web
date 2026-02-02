@@ -7,9 +7,10 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
 
-    const response = await fetch(`${OPENCODE_SERVER}/sessions/${params.id}/prompt`, {
+    const response = await fetch(`${OPENCODE_SERVER}/session/${id}/message`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -18,7 +19,9 @@ export async function POST(
     })
 
     if (!response.ok) {
-      throw new Error(`Failed to send prompt: ${response.statusText}`)
+      const errorText = await response.text()
+      console.error('Server response:', response.status, errorText)
+      throw new Error(`Failed to send prompt: ${response.status} ${response.statusText}`)
     }
 
     const data = await response.json()

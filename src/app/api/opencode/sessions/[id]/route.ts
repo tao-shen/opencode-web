@@ -7,14 +7,17 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const response = await fetch(`${OPENCODE_SERVER}/sessions/${params.id}`, {
+    const { id } = await params
+    const response = await fetch(`${OPENCODE_SERVER}/session/${id}`, {
       headers: {
         'Content-Type': 'application/json',
       },
     })
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch session: ${response.statusText}`)
+      const errorText = await response.text()
+      console.error('Server response:', response.status, errorText)
+      throw new Error(`Failed to fetch session: ${response.status} ${response.statusText}`)
     }
 
     const data = await response.json()
@@ -33,7 +36,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const response = await fetch(`${OPENCODE_SERVER}/sessions/${params.id}`, {
+    const { id } = await params
+    const response = await fetch(`${OPENCODE_SERVER}/session/${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -41,7 +45,9 @@ export async function DELETE(
     })
 
     if (!response.ok) {
-      throw new Error(`Failed to delete session: ${response.statusText}`)
+      const errorText = await response.text()
+      console.error('Server response:', response.status, errorText)
+      throw new Error(`Failed to delete session: ${response.status} ${response.statusText}`)
     }
 
     return NextResponse.json({ success: true })

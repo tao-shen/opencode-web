@@ -1,18 +1,25 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
+  isStreaming?: boolean
 }
 
 interface Session {
   id: string
   title: string
   createdAt: Date
+}
+
+interface MessagePart {
+  type: string
+  text?: string
+  content?: string
 }
 
 export default function OpencodeSDKTerminal() {
@@ -23,9 +30,11 @@ export default function OpencodeSDKTerminal() {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [streamingContent, setStreamingContent] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [mounted, setMounted] = useState(false)
+  const eventSourceRef = useRef<EventSource | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -75,34 +84,84 @@ export default function OpencodeSDKTerminal() {
         throw new Error('Failed to load sessions')
       }
       const data = await response.json()
-      setSessions(data.sessions || [])
+      // Handle different response formats from the server
+      const sessionList = data.sessions || (Array.isArray(data) ? data : Object.values(data || {}))
+      const formattedSessions = sessionList.map((s: { id?: string; slug?: string; title?: string; createdAt?: string | Date; time?: { created?: number } }) => ({
+        id: s.id || String(Math.random()),
+        title: s.title || s.slug || 'New Session',
+        createdAt: s.time?.created ? new Date(s.time.created) : (s.createdAt ? new Date(s.createdAt) : new Date())
+      }))
+      setSessions(formattedSessions)
     } catch (error) {
       console.error('Failed to load sessions:', error)
     }
   }
 
-  const createNewSession = async () => {
+  // Load session messages when session is selected
+  const loadSessionMessages = useCallback(async (sessionId: string) => {
     try {
+      const response = await fetch(`/api/opencode/sessions/${sessionId}`)
+      if (!response.ok) return
+
+      const data = await response.json()
+      if (data.messages && Array.isArray(data.messages)) {
+        const formattedMessages: Message[] = data.messages.map((msg: { id?: string; role?: string; parts?: MessagePart[]; content?: string; time?: { created?: string | Date } }, idx: number) => {
+          // Extract text content from message parts
+          let content = ''
+          if (msg.parts && Array.isArray(msg.parts)) {
+            content = msg.parts
+              .filter((part: MessagePart) => part.type === 'text')
+              .map((part: MessagePart) => part.text || part.content || '')
+              .join('\n')
+          } else if (msg.content) {
+            content = msg.content
+          }
+
+          return {
+            id: msg.id || `${sessionId}-${idx}`,
+            role: msg.role === 'assistant' ? 'assistant' : 'user',
+            content,
+            timestamp: msg.time?.created ? new Date(msg.time.created) : new Date()
+          }
+        })
+        setMessages(formattedMessages)
+      }
+    } catch (error) {
+      console.error('Failed to load session messages:', error)
+    }
+  }, [])
+
+  const createNewSession = async () => {
+    setIsLoading(true)
+    setErrorMessage('')
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30s timeout
+
       const response = await fetch('/api/opencode/sessions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: `Session ${new Date().toLocaleTimeString()}`
+          title: `New session - ${new Date().toISOString()}`
         }),
+        signal: controller.signal
       })
 
+      clearTimeout(timeoutId)
+
       if (!response.ok) {
-        throw new Error('Failed to create session')
+        const errorText = await response.text()
+        throw new Error(`Failed to create session: ${errorText}`)
       }
 
       const data = await response.json()
 
       const newSession = {
         id: data.id,
-        title: data.title || 'New Session',
-        createdAt: new Date()
+        title: data.title || data.slug || 'New Session',
+        createdAt: data.time?.created ? new Date(data.time.created) : new Date()
       }
 
       setSessions(prev => [...prev, newSession])
@@ -111,7 +170,13 @@ export default function OpencodeSDKTerminal() {
 
     } catch (error) {
       console.error('Failed to create session:', error)
-      setErrorMessage('Failed to create session: ' + String(error))
+      if (error instanceof Error && error.name === 'AbortError') {
+        setErrorMessage('Session creation timed out. Server may be busy.')
+      } else {
+        setErrorMessage('Failed to create session: ' + String(error))
+      }
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -129,6 +194,17 @@ export default function OpencodeSDKTerminal() {
     const messageText = inputValue
     setInputValue('')
     setIsLoading(true)
+    setStreamingContent('')
+
+    // Add placeholder for assistant response
+    const assistantPlaceholderId = (Date.now() + 1).toString()
+    setMessages(prev => [...prev, {
+      id: assistantPlaceholderId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      isStreaming: true
+    }])
 
     try {
       // Send prompt to session
@@ -143,43 +219,75 @@ export default function OpencodeSDKTerminal() {
       })
 
       if (!promptResponse.ok) {
-        throw new Error('Failed to send prompt')
+        const errorText = await promptResponse.text()
+        throw new Error(`Failed to send prompt: ${errorText}`)
       }
 
-      // Get the session to fetch response
-      const sessionResponse = await fetch(`/api/opencode/sessions/${currentSession.id}`)
+      // Poll for response (simple approach, could be enhanced with SSE)
+      let attempts = 0
+      const maxAttempts = 60 // 60 seconds max wait
+      let gotResponse = false
 
-      if (!sessionResponse.ok) {
-        throw new Error('Failed to fetch session')
-      }
+      while (attempts < maxAttempts && !gotResponse) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        attempts++
 
-      const sessionData = await sessionResponse.json()
+        try {
+          const sessionResponse = await fetch(`/api/opencode/sessions/${currentSession.id}`)
+          if (!sessionResponse.ok) continue
 
-      // Extract assistant's response from the session
-      if (sessionData.messages && sessionData.messages.length > 0) {
-        const lastMessage = sessionData.messages[sessionData.messages.length - 1]
-        if (lastMessage.role === 'assistant') {
-          const assistantMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: lastMessage.content,
-            timestamp: new Date()
+          const sessionData = await sessionResponse.json()
+
+          // Extract assistant's response from the session
+          if (sessionData.messages && Array.isArray(sessionData.messages)) {
+            const assistantMessages = sessionData.messages.filter((m: { role?: string }) => m.role === 'assistant')
+            if (assistantMessages.length > 0) {
+              const lastAssistantMsg = assistantMessages[assistantMessages.length - 1]
+
+              // Extract content from parts
+              let content = ''
+              if (lastAssistantMsg.parts && Array.isArray(lastAssistantMsg.parts)) {
+                content = lastAssistantMsg.parts
+                  .filter((part: MessagePart) => part.type === 'text')
+                  .map((part: MessagePart) => part.text || part.content || '')
+                  .join('\n')
+              } else if (lastAssistantMsg.content) {
+                content = lastAssistantMsg.content
+              }
+
+              if (content) {
+                setMessages(prev => prev.map(msg =>
+                  msg.id === assistantPlaceholderId
+                    ? { ...msg, content, isStreaming: false }
+                    : msg
+                ))
+                gotResponse = true
+              }
+            }
           }
-          setMessages(prev => [...prev, assistantMessage])
+        } catch (pollError) {
+          console.error('Polling error:', pollError)
         }
+      }
+
+      if (!gotResponse) {
+        setMessages(prev => prev.map(msg =>
+          msg.id === assistantPlaceholderId
+            ? { ...msg, content: 'Response timeout. Please check if the server processed your request.', isStreaming: false }
+            : msg
+        ))
       }
 
     } catch (error) {
       console.error('Failed to send message:', error)
-      const errorMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `Error: ${String(error)}`,
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, errorMsg])
+      setMessages(prev => prev.map(msg =>
+        msg.id === assistantPlaceholderId
+          ? { ...msg, content: `Error: ${String(error)}`, isStreaming: false }
+          : msg
+      ))
     } finally {
       setIsLoading(false)
+      setStreamingContent('')
     }
   }
 
@@ -248,6 +356,7 @@ export default function OpencodeSDKTerminal() {
                   onClick={() => {
                     setCurrentSession(session)
                     setMessages([])
+                    loadSessionMessages(session.id)
                   }}
                 >
                   <div style={styles.sessionTitle}>{session.title}</div>
@@ -299,27 +408,23 @@ export default function OpencodeSDKTerminal() {
                         <span style={styles.messageTime}>
                           {message.timestamp.toLocaleTimeString()}
                         </span>
+                        {message.isStreaming && (
+                          <span style={styles.streamingBadge}>Thinking...</span>
+                        )}
                       </div>
                       <div style={styles.messageContent}>
-                        {message.content}
+                        {message.isStreaming && !message.content ? (
+                          <div style={styles.typingIndicator}>
+                            <span style={styles.dot}></span>
+                            <span style={styles.dot}></span>
+                            <span style={styles.dot}></span>
+                          </div>
+                        ) : (
+                          message.content
+                        )}
                       </div>
                     </div>
                   ))}
-
-                  {isLoading && (
-                    <div style={styles.assistantMessage}>
-                      <div style={styles.messageHeader}>
-                        <span style={styles.messageRole}>OpenCode</span>
-                      </div>
-                      <div style={styles.messageContent}>
-                        <div style={styles.typingIndicator}>
-                          <span></span>
-                          <span></span>
-                          <span></span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   <div ref={messagesEndRef} />
                 </div>
@@ -598,8 +703,24 @@ const styles: Record<string, React.CSSProperties> = {
   },
   typingIndicator: {
     display: 'flex',
-    gap: '4px',
-    padding: '4px 0',
+    gap: '6px',
+    padding: '8px 0',
+    alignItems: 'center',
+  },
+  dot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: '#007AFF',
+    animation: 'bounce 1.4s infinite ease-in-out both',
+  },
+  streamingBadge: {
+    fontSize: '10px',
+    color: '#FF9500',
+    backgroundColor: 'rgba(255, 149, 0, 0.15)',
+    padding: '2px 8px',
+    borderRadius: '10px',
+    marginLeft: '8px',
   },
   inputArea: {
     padding: '20px',

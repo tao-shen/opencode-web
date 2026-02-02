@@ -79,9 +79,9 @@ export default function OpencodePage() {
             </svg>
             <div>
               <strong>Server Connection:</strong> This client connects to{' '}
-              <code style={styles.code}>http://localhost:4096</code>
+              <code style={styles.code}>{process.env.NEXT_PUBLIC_OPENCODE_SERVER_URL || 'https://nngpveejjssh.eu-central-1.clawcloudrun.com'}</code>
               <br />
-              Make sure your OpenCode server is running with CORS enabled.
+              Connected to remote OpenCode server via ClawCloud.
             </div>
           </div>
         </div>
