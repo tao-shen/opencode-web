@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { opencodeClient } from '@/lib/opencode-sdk'
 
 interface Message {
   id: string
@@ -49,17 +50,12 @@ export default function OpencodeSDKTerminal() {
         setStatus('initializing')
         setStatus('connecting')
 
-        // Test connection to API
-        const response = await fetch('/api/opencode/sessions')
-        if (!response.ok) {
-          throw new Error('Failed to connect to OpenCode API')
-        }
+        await opencodeClient.session.list()
 
         if (!isMounted) return
 
         setStatus('connected')
 
-        // Load existing sessions
         await loadSessions()
 
       } catch (error) {
@@ -79,14 +75,9 @@ export default function OpencodeSDKTerminal() {
 
   const loadSessions = async () => {
     try {
-      const response = await fetch('/api/opencode/sessions')
-      if (!response.ok) {
-        throw new Error('Failed to load sessions')
-      }
-      const data = await response.json()
-      // Handle different response formats from the server
-      const sessionList = data.sessions || (Array.isArray(data) ? data : Object.values(data || {}))
-      const formattedSessions = sessionList.map((s: { id?: string; slug?: string; title?: string; createdAt?: string | Date; time?: { created?: number } }) => ({
+      const result = await opencodeClient.session.list()
+      const sessionList = result.data || []
+      const formattedSessions = sessionList.map((s: any) => ({
         id: s.id || String(Math.random()),
         title: s.title || s.slug || 'New Session',
         createdAt: s.time?.created ? new Date(s.time.created) : (s.createdAt ? new Date(s.createdAt) : new Date())
@@ -97,35 +88,30 @@ export default function OpencodeSDKTerminal() {
     }
   }
 
-  // Load session messages when session is selected
   const loadSessionMessages = useCallback(async (sessionId: string) => {
     try {
-      const response = await fetch(`/api/opencode/sessions/${sessionId}`)
-      if (!response.ok) return
+      const result = await opencodeClient.session.messages({ path: { id: sessionId } })
+      const messages = result.data || []
 
-      const data = await response.json()
-      if (data.messages && Array.isArray(data.messages)) {
-        const formattedMessages: Message[] = data.messages.map((msg: { id?: string; role?: string; parts?: MessagePart[]; content?: string; time?: { created?: string | Date } }, idx: number) => {
-          // Extract text content from message parts
-          let content = ''
-          if (msg.parts && Array.isArray(msg.parts)) {
-            content = msg.parts
-              .filter((part: MessagePart) => part.type === 'text')
-              .map((part: MessagePart) => part.text || part.content || '')
-              .join('\n')
-          } else if (msg.content) {
-            content = msg.content
-          }
+      const formattedMessages: Message[] = messages.map((msg: any, idx: number) => {
+        let content = ''
+        if (msg.parts && Array.isArray(msg.parts)) {
+          content = msg.parts
+            .filter((part: MessagePart) => part.type === 'text')
+            .map((part: MessagePart) => part.text || part.content || '')
+            .join('\n')
+        } else if (msg.content) {
+          content = msg.content
+        }
 
-          return {
-            id: msg.id || `${sessionId}-${idx}`,
-            role: msg.role === 'assistant' ? 'assistant' : 'user',
-            content,
-            timestamp: msg.time?.created ? new Date(msg.time.created) : new Date()
-          }
-        })
-        setMessages(formattedMessages)
-      }
+        return {
+          id: msg.id || `${sessionId}-${idx}`,
+          role: msg.role === 'assistant' ? 'assistant' : 'user',
+          content,
+          timestamp: msg.time?.created ? new Date(msg.time.created) : new Date()
+        }
+      })
+      setMessages(formattedMessages)
     } catch (error) {
       console.error('Failed to load session messages:', error)
     }
@@ -135,32 +121,18 @@ export default function OpencodeSDKTerminal() {
     setIsLoading(true)
     setErrorMessage('')
     try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30s timeout
-
-      const response = await fetch('/api/opencode/sessions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: `New session - ${new Date().toISOString()}`
-        }),
-        signal: controller.signal
+      const result = await opencodeClient.session.create({
+        body: { title: `New session - ${new Date().toISOString()}` }
       })
 
-      clearTimeout(timeoutId)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Failed to create session: ${errorText}`)
+      const data = result.data
+      if (!data) {
+        throw new Error('Failed to create session: no data returned')
       }
-
-      const data = await response.json()
 
       const newSession = {
         id: data.id,
-        title: data.title || data.slug || 'New Session',
+        title: data.title || 'New Session',
         createdAt: data.time?.created ? new Date(data.time.created) : new Date()
       }
 
@@ -170,11 +142,7 @@ export default function OpencodeSDKTerminal() {
 
     } catch (error) {
       console.error('Failed to create session:', error)
-      if (error instanceof Error && error.name === 'AbortError') {
-        setErrorMessage('Session creation timed out. Server may be busy.')
-      } else {
-        setErrorMessage('Failed to create session: ' + String(error))
-      }
+      setErrorMessage('Failed to create session: ' + String(error))
     } finally {
       setIsLoading(false)
     }
@@ -208,20 +176,10 @@ export default function OpencodeSDKTerminal() {
 
     try {
       // Send prompt to session
-      const promptResponse = await fetch(`/api/opencode/sessions/${currentSession.id}/prompt`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          parts: [{ type: 'text', text: messageText }]
-        }),
+      await opencodeClient.session.prompt({
+        path: { id: currentSession.id },
+        body: { parts: [{ type: 'text', text: messageText }] }
       })
-
-      if (!promptResponse.ok) {
-        const errorText = await promptResponse.text()
-        throw new Error(`Failed to send prompt: ${errorText}`)
-      }
 
       // Poll for response (simple approach, could be enhanced with SSE)
       let attempts = 0
@@ -233,36 +191,30 @@ export default function OpencodeSDKTerminal() {
         attempts++
 
         try {
-          const sessionResponse = await fetch(`/api/opencode/sessions/${currentSession.id}`)
-          if (!sessionResponse.ok) continue
+          const result = await opencodeClient.session.messages({ path: { id: currentSession.id } })
+          const messages = result.data || []
 
-          const sessionData = await sessionResponse.json()
+          const assistantMessages = messages.filter((m: any) => m.role === 'assistant')
+          if (assistantMessages.length > 0) {
+            const lastAssistantMsg = assistantMessages[assistantMessages.length - 1] as any
 
-          // Extract assistant's response from the session
-          if (sessionData.messages && Array.isArray(sessionData.messages)) {
-            const assistantMessages = sessionData.messages.filter((m: { role?: string }) => m.role === 'assistant')
-            if (assistantMessages.length > 0) {
-              const lastAssistantMsg = assistantMessages[assistantMessages.length - 1]
+            let content = ''
+            if (lastAssistantMsg.parts && Array.isArray(lastAssistantMsg.parts)) {
+              content = lastAssistantMsg.parts
+                .filter((part: MessagePart) => part.type === 'text')
+                .map((part: MessagePart) => part.text || part.content || '')
+                .join('\n')
+            } else if (lastAssistantMsg.info) {
+              content = lastAssistantMsg.info.content || ''
+            }
 
-              // Extract content from parts
-              let content = ''
-              if (lastAssistantMsg.parts && Array.isArray(lastAssistantMsg.parts)) {
-                content = lastAssistantMsg.parts
-                  .filter((part: MessagePart) => part.type === 'text')
-                  .map((part: MessagePart) => part.text || part.content || '')
-                  .join('\n')
-              } else if (lastAssistantMsg.content) {
-                content = lastAssistantMsg.content
-              }
-
-              if (content) {
-                setMessages(prev => prev.map(msg =>
-                  msg.id === assistantPlaceholderId
-                    ? { ...msg, content, isStreaming: false }
-                    : msg
-                ))
-                gotResponse = true
-              }
+            if (content) {
+              setMessages(prev => prev.map(msg =>
+                msg.id === assistantPlaceholderId
+                  ? { ...msg, content, isStreaming: false }
+                  : msg
+              ))
+              gotResponse = true
             }
           }
         } catch (pollError) {

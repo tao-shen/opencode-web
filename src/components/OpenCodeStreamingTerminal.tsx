@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { opencodeClient } from '@/lib/opencode-sdk'
 
 interface Part {
   id: string
@@ -78,49 +79,54 @@ export default function OpenCodeStreamingTerminal() {
 
   const createSession = useCallback(async (): Promise<string | null> => {
     try {
-      const response = await fetch('/api/opencode/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: `Terminal Session - ${new Date().toISOString()}` }),
+      const result = await opencodeClient.session.create({
+        body: { title: `Terminal Session - ${new Date().toISOString()}` },
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to create session')
-      }
-
-      const data = await response.json()
-      return data.id
+      return result.data?.id || null
     } catch (error) {
       console.error('Failed to create session:', error)
       return null
     }
   }, [])
 
-  const connectToEvents = useCallback((sessionId: string) => {
+  const connectToEvents = useCallback(async (sessionId: string) => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close()
     }
 
-    const eventSource = new EventSource('/api/opencode/events')
-    eventSourceRef.current = eventSource
+    try {
+      const { stream } = await opencodeClient.event.subscribe()
 
-    eventSource.onopen = () => {
+      eventSourceRef.current = {
+        close: () => {},
+        readyState: 1,
+        CONNECTING: 0,
+        OPEN: 1,
+        CLOSED: 2,
+      } as EventSource
+
       console.log('SSE connected')
-    }
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data: GlobalEvent = JSON.parse(event.data)
-        const payload = data.payload
-
-        // Only process events for our session
-        if (payload.properties?.sessionID && payload.properties.sessionID !== sessionId) {
-          return
+      for await (const event of stream) {
+        const props = event.properties as {
+          sessionID?: string
+          status?: { type: string }
+          part?: Part
+          delta?: string
+          info?: { id: string; role: string; parts?: Part[] }
         }
 
-        switch (payload.type) {
+        if (!props) continue
+
+        // Only process events for our session
+        if (props.sessionID && props.sessionID !== sessionId) {
+          continue
+        }
+
+        switch (event.type) {
           case 'session.status':
-            const statusType = payload.properties?.status?.type
+            const statusType = props?.status?.type
             if (statusType === 'busy') {
               setStatus('busy')
             } else if (statusType === 'idle') {
@@ -134,8 +140,8 @@ export default function OpenCodeStreamingTerminal() {
             break
 
           case 'message.part.updated':
-            const part = payload.properties?.part
-            const delta = payload.properties?.delta
+            const part = props?.part
+            const delta = props?.delta
 
             // Stream text deltas to terminal
             if (part?.type === 'text' && delta) {
@@ -144,7 +150,7 @@ export default function OpenCodeStreamingTerminal() {
             break
 
           case 'message.updated':
-            const info = payload.properties?.info
+            const info = props?.info
             if (info?.role === 'assistant' && info?.id) {
               currentMessageIdRef.current = info.id
             }
@@ -158,18 +164,10 @@ export default function OpenCodeStreamingTerminal() {
             }
             break
         }
-      } catch (e) {
-        console.error('Failed to parse SSE event:', e)
       }
+    } catch (e) {
+      console.error('SSE stream error:', e)
     }
-
-    eventSource.onerror = () => {
-      // SSE connection failed - this is expected on Vercel due to timeouts
-      // Don't auto-reconnect to avoid spamming, user can manually reconnect
-      console.log('SSE connection closed (this is normal on Vercel)')
-    }
-
-    return eventSource
   }, [writeDelta, writePrompt])
 
   const sendPrompt = useCallback(async (sessionId: string, prompt: string) => {
@@ -177,17 +175,11 @@ export default function OpenCodeStreamingTerminal() {
       setStatus('busy')
       writeOutput('\r\n')
 
-      const response = await fetch(`/api/opencode/sessions/${sessionId}/prompt`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parts: [{ type: 'text', text: prompt }] }),
+      await opencodeClient.session.prompt({
+        path: { id: sessionId },
+        body: { parts: [{ type: 'text', text: prompt }] },
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to send prompt')
-      }
-
-      // Response will come via SSE events
     } catch (error) {
       console.error('Failed to send prompt:', error)
       writeOutput(`\r\n\x1b[31mError: ${String(error)}\x1b[0m`)
@@ -378,17 +370,11 @@ export default function OpenCodeStreamingTerminal() {
         term.write('╚═══════════════════════════════════════════════════════════╝\r\n')
         term.write('\x1b[0m')
 
-        // Check server health
         term.write('\r\n\x1b[33mConnecting to OpenCode server...\x1b[0m')
 
         try {
-          const healthResponse = await fetch('/api/proxy/global/health')
-          if (healthResponse.ok) {
-            const healthData = await healthResponse.json()
-            term.write(`\x1b[32m connected (v${healthData.version || 'unknown'})\x1b[0m\r\n`)
-          } else {
-            throw new Error('Health check failed')
-          }
+          await opencodeClient.session.list()
+          term.write(`\x1b[32m connected\x1b[0m\r\n`)
         } catch {
           term.write('\x1b[31m failed\x1b[0m\r\n')
           term.write('\x1b[33mServer connection failed. Check your server status.\x1b[0m\r\n')
