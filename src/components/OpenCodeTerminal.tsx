@@ -6,7 +6,16 @@ interface MessagePart {
   type: string
   text?: string
   content?: string
+  toolInvocation?: {
+    toolName?: string
+    state?: string
+    args?: Record<string, unknown>
+    result?: unknown
+  }
 }
+
+// Server URL for direct SSE connection (bypasses Vercel proxy timeout)
+const OPENCODE_SERVER = process.env.NEXT_PUBLIC_OPENCODE_SERVER_URL || 'https://nngpveejjssh.eu-central-1.clawcloudrun.com'
 
 export default function OpenCodeTerminal() {
   const terminalRef = useRef<HTMLDivElement>(null)
@@ -21,6 +30,10 @@ export default function OpenCodeTerminal() {
   const historyIndexRef = useRef<number>(-1)
   const statusRef = useRef(status)
   const handleCommandRef = useRef<(command: string) => Promise<void>>(async () => {})
+  const eventSourceRef = useRef<EventSource | null>(null)
+  const currentMessageIdRef = useRef<string | null>(null)
+  const streamedTextRef = useRef<Map<string, string>>(new Map())
+  const lastDisplayedLengthRef = useRef<Map<string, number>>(new Map())
 
   useEffect(() => {
     setMounted(true)
@@ -49,6 +62,15 @@ export default function OpenCodeTerminal() {
     }
   }, [])
 
+  // Write streaming delta (append new text without newline)
+  const writeDelta = useCallback((text: string, color: string = '37') => {
+    if (termRef.current && text) {
+      // Replace newlines with \r\n for proper terminal display
+      const formattedText = text.replace(/\n/g, '\r\n')
+      termRef.current.write(`\x1b[${color}m${formattedText}\x1b[0m`)
+    }
+  }, [])
+
   const createSession = useCallback(async (): Promise<string | null> => {
     try {
       const response = await fetch('/api/opencode/sessions', {
@@ -69,9 +91,148 @@ export default function OpenCodeTerminal() {
     }
   }, [])
 
-  const sendPrompt = useCallback(async (sessionId: string, prompt: string): Promise<string> => {
+  // Connect to SSE for real-time streaming
+  const connectToEvents = useCallback((sessionId: string) => {
+    // Close existing connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+    }
+
+    // Connect directly to OpenCode server (bypasses Vercel timeout)
+    const eventSource = new EventSource(`${OPENCODE_SERVER}/event`)
+    eventSourceRef.current = eventSource
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+
+        // Filter by session
+        if (data.properties?.sessionID && data.properties.sessionID !== sessionId) {
+          return
+        }
+
+        // Handle different event types
+        switch (data.type) {
+          case 'message.part.updated': {
+            const part = data.properties?.part as MessagePart | undefined
+            const messageId = data.properties?.messageID as string | undefined
+            const partIndex = data.properties?.partIndex as number | undefined
+
+            if (!part || messageId === undefined || partIndex === undefined) break
+
+            const partKey = `${messageId}-${partIndex}`
+
+            if (part.type === 'text' && part.text) {
+              // Get previously displayed length for this part
+              const prevLength = lastDisplayedLengthRef.current.get(partKey) || 0
+              const currentText = part.text
+
+              // Only write the new characters (delta)
+              if (currentText.length > prevLength) {
+                const delta = currentText.substring(prevLength)
+                writeDelta(delta)
+                lastDisplayedLengthRef.current.set(partKey, currentText.length)
+              }
+
+              // Store the full text
+              streamedTextRef.current.set(partKey, currentText)
+            } else if (part.type === 'tool-invocation' && part.toolInvocation) {
+              const tool = part.toolInvocation
+              const prevState = streamedTextRef.current.get(partKey + '-state')
+
+              if (tool.state !== prevState) {
+                streamedTextRef.current.set(partKey + '-state', tool.state || '')
+
+                if (tool.state === 'called' || tool.state === 'calling') {
+                  writeDelta(`\r\n\x1b[33m⚡ Calling tool: ${tool.toolName}\x1b[0m`)
+                  if (tool.args && Object.keys(tool.args).length > 0) {
+                    const argsStr = JSON.stringify(tool.args, null, 2)
+                      .split('\n')
+                      .map(line => `   ${line}`)
+                      .join('\r\n')
+                    writeDelta(`\r\n\x1b[90m${argsStr}\x1b[0m`)
+                  }
+                } else if (tool.state === 'result') {
+                  writeDelta(`\r\n\x1b[32m✓ Tool completed: ${tool.toolName}\x1b[0m`)
+                  if (tool.result) {
+                    const resultStr = typeof tool.result === 'string'
+                      ? tool.result
+                      : JSON.stringify(tool.result, null, 2)
+                    // Truncate long results
+                    const truncated = resultStr.length > 500
+                      ? resultStr.substring(0, 500) + '...'
+                      : resultStr
+                    writeDelta(`\r\n\x1b[90m${truncated.replace(/\n/g, '\r\n')}\x1b[0m`)
+                  }
+                }
+              }
+            } else if (part.type === 'reasoning' && part.text) {
+              // Show reasoning/thinking
+              const prevLength = lastDisplayedLengthRef.current.get(partKey) || 0
+              const currentText = part.text
+
+              if (currentText.length > prevLength) {
+                if (prevLength === 0) {
+                  writeDelta('\r\n\x1b[35m💭 Thinking:\x1b[0m\r\n')
+                }
+                const delta = currentText.substring(prevLength)
+                writeDelta(delta, '90') // dim color for reasoning
+                lastDisplayedLengthRef.current.set(partKey, currentText.length)
+              }
+            }
+            break
+          }
+
+          case 'session.updated': {
+            const state = data.properties?.session?.state
+            if (state === 'completed' || state === 'idle') {
+              // Message completed
+              if (statusRef.current === 'processing') {
+                setStatus('ready')
+                // Clear tracking refs for next message
+                streamedTextRef.current.clear()
+                lastDisplayedLengthRef.current.clear()
+                currentMessageIdRef.current = null
+                writePrompt()
+              }
+            }
+            break
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse SSE event:', e)
+      }
+    }
+
+    eventSource.onerror = () => {
+      console.log('SSE connection error - will reconnect')
+      // Auto-reconnect after 2 seconds
+      setTimeout(() => {
+        if (eventSourceRef.current === eventSource) {
+          connectToEvents(sessionId)
+        }
+      }, 2000)
+    }
+
+    return eventSource
+  }, [writeDelta, writePrompt])
+
+  // Cleanup SSE on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+      }
+    }
+  }, [])
+
+  const sendPrompt = useCallback(async (sessionId: string, prompt: string): Promise<void> => {
     try {
-      // Send the prompt - the response includes the assistant message
+      // Clear tracking for new message
+      streamedTextRef.current.clear()
+      lastDisplayedLengthRef.current.clear()
+
+      // Send the prompt - response will stream via SSE
       const promptResponse = await fetch(`/api/opencode/sessions/${sessionId}/prompt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -84,57 +245,32 @@ export default function OpenCodeTerminal() {
       }
 
       const result = await promptResponse.json()
+      currentMessageIdRef.current = result.id || null
 
-      // The prompt response directly contains the assistant message
+      // If we got a direct response (SSE might not be working), display it
       if (result.parts && Array.isArray(result.parts)) {
-        const textParts = result.parts
-          .filter((part: MessagePart) => part.type === 'text')
-          .map((part: MessagePart) => part.text || '')
-          .filter((text: string) => text.length > 0)
-
-        if (textParts.length > 0) {
-          return textParts.join('\n')
-        }
-      }
-
-      // Fallback: poll the messages endpoint
-      let attempts = 0
-      const maxAttempts = 60 // 1 minute max wait
-
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        attempts++
-
-        const messagesResponse = await fetch(`/api/opencode/sessions/${sessionId}/messages`)
-        if (!messagesResponse.ok) continue
-
-        const messagesData = await messagesResponse.json()
-
-        if (Array.isArray(messagesData)) {
-          const assistantMsgs = messagesData.filter((m: { info?: { role?: string } }) => m.info?.role === 'assistant')
-          if (assistantMsgs.length > 0) {
-            const lastMsg = assistantMsgs[assistantMsgs.length - 1]
-
-            if (lastMsg.parts && Array.isArray(lastMsg.parts)) {
-              const textParts = lastMsg.parts
-                .filter((part: MessagePart) => part.type === 'text')
-                .map((part: MessagePart) => part.text || '')
-                .filter((text: string) => text.length > 0)
-
-              if (textParts.length > 0) {
-                return textParts.join('\n')
+        const hasText = result.parts.some((p: MessagePart) => p.type === 'text' && p.text)
+        if (hasText) {
+          // SSE should have shown this, but as fallback...
+          const alreadyDisplayed = Array.from(streamedTextRef.current.values()).join('').length > 0
+          if (!alreadyDisplayed) {
+            for (const part of result.parts) {
+              if (part.type === 'text' && part.text) {
+                writeDelta('\r\n' + part.text)
               }
             }
+            setStatus('ready')
+            writePrompt()
           }
         }
       }
-
-      return 'Response timeout. The server may be processing your request.'
     } catch (error) {
       console.error('Failed to send prompt:', error)
-      return `Error: ${String(error)}`
+      writeDelta(`\r\n\x1b[31mError: ${String(error)}\x1b[0m`)
+      setStatus('ready')
+      writePrompt()
     }
-  }, [])
+  }, [writeDelta, writePrompt])
 
   const handleCommand = useCallback(async (command: string) => {
     const trimmedCommand = command.trim()
@@ -170,9 +306,16 @@ export default function OpenCodeTerminal() {
       setStatus('processing')
       writeOutput('\r\n\x1b[33mCreating new session...\x1b[0m')
 
+      // Close existing SSE connection
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+        eventSourceRef.current = null
+      }
+
       const newSessionId = await createSession()
       if (newSessionId) {
         setCurrentSessionId(newSessionId)
+        connectToEvents(newSessionId)
         writeOutput(`\r\n\x1b[32m✓ New session created: ${newSessionId.substring(0, 16)}...\x1b[0m`)
       } else {
         writeOutput('\r\n\x1b[31m✗ Failed to create session\x1b[0m')
@@ -198,6 +341,7 @@ export default function OpenCodeTerminal() {
       sessionId = await createSession()
       if (sessionId) {
         setCurrentSessionId(sessionId)
+        connectToEvents(sessionId)
         writeOutput('\x1b[32m done\x1b[0m')
       } else {
         writeOutput('\r\n\x1b[31m✗ Failed to create session. Please try again.\x1b[0m')
@@ -207,17 +351,11 @@ export default function OpenCodeTerminal() {
       }
     }
 
-    writeOutput('\r\n\x1b[90mThinking...\x1b[0m')
+    // Show that we're processing
+    writeOutput('\r\n')
 
-    const response = await sendPrompt(sessionId, trimmedCommand)
-
-    // Clear "Thinking..." and write response
-    termRef.current?.write('\r\x1b[K') // Clear current line
-    writeOutput(`\r\n\x1b[37m${response}\x1b[0m`)
-
-    setStatus('ready')
-    writePrompt()
-  }, [currentSessionId, createSession, sendPrompt, writeOutput, writePrompt])
+    await sendPrompt(sessionId, trimmedCommand)
+  }, [currentSessionId, createSession, connectToEvents, sendPrompt, writeOutput, writePrompt])
 
   // Keep handleCommandRef in sync
   useEffect(() => {
@@ -433,7 +571,7 @@ export default function OpenCodeTerminal() {
           <span style={getStatusDotStyle(status)}></span>
           {status === 'initializing' && 'Initializing...'}
           {status === 'ready' && 'Ready'}
-          {status === 'processing' && 'Processing...'}
+          {status === 'processing' && 'Streaming...'}
           {status === 'error' && 'Error'}
         </div>
         {currentSessionId && (
