@@ -24,6 +24,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@tauri-apps/api/*": [
+        "./src/lib/tauri-mock/*"
       ]
     }
   },

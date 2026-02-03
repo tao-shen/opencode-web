@@ -1,193 +1,249 @@
-'use client';
-
-import { useSessionStore } from '@/stores/useSessionStore';
+import React from 'react';
+import { RiDownloadLine, RiInformationLine, RiSettings3Line } from '@remixicon/react';
+import { toast } from '@/components/ui';
+import { cn } from '@/lib/utils';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { useUIStore } from '@/stores/useUIStore';
+import { useUpdateStore } from '@/stores/useUpdateStore';
+import { UpdateDialog } from '../ui/UpdateDialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
-export default function Sidebar() {
-  const { sessions, currentSessionId, setCurrentSession, deleteSession, createSession } = useSessionStore();
-  const { activeMainTab, setActiveMainTab } = useUIStore();
+export const SIDEBAR_CONTENT_WIDTH = 264;
+const SIDEBAR_MIN_WIDTH = 200;
+const SIDEBAR_MAX_WIDTH = 500;
+const CHECK_FOR_UPDATES_EVENT = 'openchamber:check-for-updates';
 
-  const tabs = [
-    { id: 'chat', label: 'Chat', icon: '💬' },
-    { id: 'terminal', label: 'Terminal', icon: '⌨️' },
-    { id: 'files', label: 'Files', icon: '📁' },
-    { id: 'git', label: 'Git', icon: '🔀' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
-  ] as const;
-
-  return (
-    <aside
-      style={{
-        width: '280px',
-        height: '100vh',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'fixed',
-        left: 0,
-        top: 0,
-        zIndex: 50,
-      }}
-    >
-      <div style={{ padding: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveMainTab(tab.id as any)}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '12px',
-              width: '100%',
-              textAlign: 'left',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              color: activeMainTab === tab.id ? '#007AFF' : '#86868B',
-              fontSize: '14px',
-              fontWeight: 500,
-              borderRadius: '6px',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(0, 122, 255, 0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-          >
-            <span style={{ fontSize: '18px' }}>{tab.icon}</span>
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '8px 0',
-          }}
-        >
-          <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#86868B' }}>Sessions</h3>
-          <button
-            onClick={() => createSession({
-              id: crypto.randomUUID(),
-              slug: crypto.randomUUID().slice(0, 8),
-              title: 'New Session',
-              projectID: 'default',
-              directory: '/tmp',
-              version: '1.0.0',
-              time: { created: Date.now(), updated: Date.now() },
-              status: 'idle',
-            })}
-            style={{
-              background: '#007AFF',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '6px 12px',
-              color: 'white',
-              fontSize: '14px',
-              cursor: 'pointer',
-              fontWeight: 600,
-              transition: 'all 0.2s ease',
-            }}
-          >
-            + New
-          </button>
-        </div>
-
-        {Array.from(sessions.values()).map((session) => (
-          <div
-            key={session.id}
-            onClick={() => setCurrentSession(session.id)}
-            style={{
-              padding: '12px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              backgroundColor:
-                currentSessionId === session.id ? 'rgba(0, 122, 255, 0.1)' : 'transparent',
-              border: currentSessionId === session.id ? '1px solid #007AFF' : 'none',
-              marginBottom: '8px',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(0, 122, 255, 0.1)';
-            }}
-            onMouseLeave={(e) => {
-              if (currentSessionId !== session.id) {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '6px',
-                  backgroundColor: session.status === 'running' ? '#50FA7B' : '#86868B',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '16px',
-                  flexShrink: 0,
-                }}
-              >
-                {session.status === 'running' ? '⚡' : '💬'}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    color: '#F5F5F7',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {session.title}
-                </div>
-                <div style={{ fontSize: '12px', color: '#86868B', marginTop: '2px' }}>
-                  {new Date(session.time.created).toLocaleString()}
-                </div>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm(`Delete session "${session.title}"?`)) {
-                    deleteSession(session.id);
-                  }
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#86868B',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  opacity: 0.6,
-                  transition: 'opacity 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '1';
-                  e.currentTarget.style.color = '#FF453A';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '0.6';
-                  e.currentTarget.style.color = '#86868B';
-                }}
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </aside>
-  );
+interface SidebarProps {
+    isOpen: boolean;
+    isMobile: boolean;
+    children: React.ReactNode;
 }
+
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isMobile, children }) => {
+    const { sidebarWidth, setSidebarWidth, setSettingsDialogOpen, setAboutDialogOpen } = useUIStore();
+    const [isResizing, setIsResizing] = React.useState(false);
+    const startXRef = React.useRef(0);
+    const startWidthRef = React.useRef(sidebarWidth || SIDEBAR_CONTENT_WIDTH);
+    const [updateDialogOpen, setUpdateDialogOpen] = React.useState(false);
+
+    const updateStore = useUpdateStore();
+    const pendingMenuUpdateCheckRef = React.useRef(false);
+
+    const checkForUpdates = updateStore.checkForUpdates;
+    const { available, downloaded, checking } = updateStore;
+
+    const [isDesktopApp, setIsDesktopApp] = React.useState<boolean>(() => {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+        return typeof (window as typeof window & { opencodeDesktop?: unknown }).opencodeDesktop !== 'undefined';
+    });
+
+
+
+    React.useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+        const detected = typeof (window as typeof window & { opencodeDesktop?: unknown }).opencodeDesktop !== 'undefined';
+        setIsDesktopApp(detected);
+    }, []);
+
+    React.useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const handleMenuUpdateCheck = () => {
+            const hasDesktopApi =
+                typeof (window as typeof window & { opencodeDesktop?: unknown }).opencodeDesktop !== 'undefined';
+            if (!hasDesktopApi) {
+                return;
+            }
+            pendingMenuUpdateCheckRef.current = true;
+            void checkForUpdates();
+        };
+
+        window.addEventListener(CHECK_FOR_UPDATES_EVENT, handleMenuUpdateCheck as EventListener);
+        return () => {
+            window.removeEventListener(CHECK_FOR_UPDATES_EVENT, handleMenuUpdateCheck as EventListener);
+        };
+    }, [checkForUpdates]);
+
+    React.useEffect(() => {
+        if (!pendingMenuUpdateCheckRef.current) {
+            return;
+        }
+        if (checking) {
+            return;
+        }
+
+        if (available || downloaded) {
+            setUpdateDialogOpen(true);
+        } else {
+            toast.success('No updates available', {
+                description: 'You are running the latest version.',
+            });
+        }
+        pendingMenuUpdateCheckRef.current = false;
+    }, [available, downloaded, checking]);
+
+    React.useEffect(() => {
+        if (isMobile || !isResizing) {
+            return;
+        }
+
+        const handlePointerMove = (event: PointerEvent) => {
+            const delta = event.clientX - startXRef.current;
+            const nextWidth = Math.min(
+                SIDEBAR_MAX_WIDTH,
+                Math.max(SIDEBAR_MIN_WIDTH, startWidthRef.current + delta)
+            );
+            setSidebarWidth(nextWidth);
+        };
+
+        const handlePointerUp = () => {
+            setIsResizing(false);
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp, { once: true });
+
+        return () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+        };
+    }, [isMobile, isResizing, setSidebarWidth]);
+
+    React.useEffect(() => {
+        if (isMobile && isResizing) {
+            setIsResizing(false);
+        }
+    }, [isMobile, isResizing]);
+
+    if (isMobile) {
+
+        return null;
+    }
+
+    const appliedWidth = isOpen ? Math.min(
+        SIDEBAR_MAX_WIDTH,
+        Math.max(SIDEBAR_MIN_WIDTH, sidebarWidth || SIDEBAR_CONTENT_WIDTH)
+    ) : 0;
+
+    const handlePointerDown = (event: React.PointerEvent) => {
+        if (!isOpen) {
+            return;
+        }
+        setIsResizing(true);
+        startXRef.current = event.clientX;
+        startWidthRef.current = appliedWidth;
+        event.preventDefault();
+    };
+
+    return (
+        <aside
+            className={cn(
+                'relative flex h-full overflow-hidden border-r border-border',
+                isDesktopApp
+                    ? 'bg-[color:var(--sidebar-overlay-strong)] backdrop-blur supports-[backdrop-filter]:bg-[color:var(--sidebar-overlay-soft)]'
+                    : 'bg-sidebar',
+                isResizing ? 'transition-none' : 'transition-[width] duration-300 ease-in-out',
+                !isOpen && 'border-r-0'
+            )}
+            style={{
+                width: `${appliedWidth}px`,
+                minWidth: `${appliedWidth}px`,
+                maxWidth: `${appliedWidth}px`,
+                overflowX: 'clip',
+            }}
+            aria-hidden={!isOpen || appliedWidth === 0}
+        >
+            {isOpen && (
+                <div
+                    className={cn(
+                        'absolute right-0 top-0 z-20 h-full w-[4px] cursor-col-resize hover:bg-primary/50 transition-colors',
+                        isResizing && 'bg-primary'
+                    )}
+                    onPointerDown={handlePointerDown}
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Resize left panel"
+                />
+            )}
+            <div
+                className={cn(
+                    'relative z-10 flex h-full flex-col transition-opacity duration-300 ease-in-out',
+                    !isOpen && 'pointer-events-none select-none opacity-0'
+                )}
+                style={{ width: `${appliedWidth}px`, overflowX: 'hidden' }}
+                aria-hidden={!isOpen}
+            >
+                <div className="flex-1 overflow-hidden">
+                    <ErrorBoundary>{children}</ErrorBoundary>
+                </div>
+                <div className="flex-shrink-0 border-t border-border h-12 px-2 bg-sidebar">
+                    <div className="flex h-full items-center justify-between gap-2">
+                        <button
+                            onClick={() => setSettingsDialogOpen(true)}
+                            className={cn(
+                                'flex h-8 items-center gap-2 rounded-md px-2',
+                                'text-sm font-semibold text-sidebar-foreground/90',
+                                'hover:text-sidebar-foreground hover:bg-interactive-hover',
+                                'transition-all duration-200'
+                            )}
+                        >
+                            <RiSettings3Line className="h-4 w-4" />
+                            <span>Settings</span>
+                        </button>
+                        {(available || downloaded) ? (
+                                <button
+                                    onClick={() => setUpdateDialogOpen(true)}
+                                    className={cn(
+                                        'flex items-center gap-1.5 rounded-md px-2 py-1',
+                                        'text-xs font-semibold',
+                                        'bg-primary/10 text-primary',
+                                        'hover:bg-primary/20',
+                                        'transition-colors'
+                                    )}
+                                >
+                                    <RiDownloadLine className="h-3.5 w-3.5" />
+                                    <span>Update</span>
+                                </button>
+
+                        ) : !isDesktopApp && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        onClick={() => setAboutDialogOpen(true)}
+                                        className={cn(
+                                            'flex h-8 w-8 items-center justify-center rounded-md',
+                                            'text-sidebar-foreground/70',
+                                            'hover:text-sidebar-foreground hover:bg-interactive-hover',
+                                            'transition-all duration-200'
+                                        )}
+                                    >
+                                        <RiInformationLine className="h-4 w-4" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">About OpenChamber</TooltipContent>
+                            </Tooltip>
+                        )}
+                    </div>
+                </div>
+                <UpdateDialog
+                    open={updateDialogOpen}
+                    onOpenChange={setUpdateDialogOpen}
+                    info={updateStore.info}
+                    downloading={updateStore.downloading}
+                    downloaded={updateStore.downloaded}
+                    progress={updateStore.progress}
+                    error={updateStore.error}
+                    onDownload={updateStore.downloadUpdate}
+                    onRestart={updateStore.restartToUpdate}
+                    runtimeType={updateStore.runtimeType}
+                />
+            </div>
+        </aside>
+    );
+};
