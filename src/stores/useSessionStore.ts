@@ -403,16 +403,37 @@ export const useSessionStore = create<SessionStore>()(
                         }
                     }
 
-                    const currentSessionId = useSessionManagementStore.getState().currentSessionId;
-                    const sessionAgentSelection = currentSessionId
-                        ? useContextStore.getState().getSessionAgentSelection(currentSessionId)
-                        : null;
+                    let effectiveSessionId = useSessionManagementStore.getState().currentSessionId;
+                    
+                    // Auto-create session if none exists
+                    if (!effectiveSessionId) {
+                        const created = await useSessionManagementStore
+                            .getState()
+                            .createSession(null, null, null);
+                        if (created?.id) {
+                            effectiveSessionId = created.id;
+                            // Initialize the session
+                            try {
+                                useSessionManagementStore
+                                    .getState()
+                                    .initializeNewOpenChamberSession(created.id, useConfigStore.getState().agents);
+                            } catch {
+                                // ignored
+                            }
+                        }
+                    }
+                    
+                    if (!effectiveSessionId) {
+                        throw new Error('Failed to create or get session');
+                    }
+                    
+                    const sessionAgentSelection = useContextStore.getState().getSessionAgentSelection(effectiveSessionId);
                     const configAgentName = useConfigStore.getState().currentAgentName;
                     const effectiveAgent = trimmedAgent || sessionAgentSelection || configAgentName || undefined;
 
-                    if (currentSessionId && effectiveAgent) {
+                    if (effectiveAgent) {
                         try {
-                            useContextStore.getState().saveSessionAgentSelection(currentSessionId, effectiveAgent);
+                            useContextStore.getState().saveSessionAgentSelection(effectiveSessionId, effectiveAgent);
                         } catch {
                             // ignored
                         }
@@ -421,23 +442,19 @@ export const useSessionStore = create<SessionStore>()(
                             try {
                                 useContextStore
                                     .getState()
-                                    .saveAgentModelVariantForSession(currentSessionId, effectiveAgent, providerID, modelID, variant);
+                                    .saveAgentModelVariantForSession(effectiveSessionId, effectiveAgent, providerID, modelID, variant);
                             } catch {
                                 // ignored
                             }
                         }
                     }
  
-                    if (currentSessionId) {
-                        setBusyPhase(currentSessionId);
-                    }
+                    setBusyPhase(effectiveSessionId);
 
                     try {
-                        return await useMessageStore.getState().sendMessage(content, providerID, modelID, effectiveAgent, currentSessionId || undefined, attachments, agentMentionName, additionalParts, variant);
+                        return await useMessageStore.getState().sendMessage(content, providerID, modelID, effectiveAgent, effectiveSessionId, attachments, agentMentionName, additionalParts, variant);
                     } catch (error) {
-                        if (currentSessionId) {
-                            setIdlePhase(currentSessionId);
-                        }
+                        setIdlePhase(effectiveSessionId);
                         throw error;
                     }
                 },
