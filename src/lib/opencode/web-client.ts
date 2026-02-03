@@ -52,48 +52,46 @@ export type DirectorySwitchResult = {
   models?: unknown[];
 };
 
-// Mock provider data - matches /api/openchamber/models-metadata
 const MOCK_PROVIDERS: Provider[] = [
   {
     id: 'opencode',
+    source: 'custom',
     name: 'OpenCode',
-    models: [
-      { id: 'big-pickle', name: 'Big Pickle' },
-      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
-      { id: 'gpt-4o', name: 'GPT-4o' },
-    ],
+    env: [],
+    options: {},
+    models: {} as Record<string, Model>,
   },
   {
     id: 'anthropic',
+    source: 'custom',
     name: 'Anthropic',
-    models: [
-      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
-      { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
-    ],
+    env: [],
+    options: {},
+    models: {} as Record<string, Model>,
   },
   {
     id: 'openai',
+    source: 'custom',
     name: 'OpenAI',
-    models: [
-      { id: 'gpt-4o', name: 'GPT-4o' },
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
-      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
-    ],
+    env: [],
+    options: {},
+    models: {} as Record<string, Model>,
   },
   {
     id: 'google',
+    source: 'custom',
     name: 'Google',
-    models: [
-      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' },
-      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
-    ],
+    env: [],
+    options: {},
+    models: {} as Record<string, Model>,
   },
   {
     id: 'deepseek',
+    source: 'custom',
     name: 'DeepSeek',
-    models: [
-      { id: 'deepseek-chat', name: 'DeepSeek Chat' },
-    ],
+    env: [],
+    options: {},
+    models: {} as Record<string, Model>,
   },
 ];
 
@@ -272,6 +270,16 @@ class MockOpencodeService {
     return '/home/webuser';
   }
 
+  async getApiClient(): Promise<any> {
+    return this;
+  }
+
+  async getCommandDetails(command: string): Promise<{ template?: string }> {
+    return {
+      template: `Command ${command} executed with $ARGUMENTS`
+    };
+  }
+
   // Tools
   async listToolIds(options?: { directory?: string | null }): Promise<string[]> {
     return [];
@@ -303,8 +311,7 @@ class MockOpencodeService {
   async getConfig(): Promise<Config> {
     return {
       theme: 'dark',
-      providers: MOCK_PROVIDERS,
-    };
+    } as Config;
   }
 
   async updateConfig(config: Record<string, unknown>): Promise<Config> {

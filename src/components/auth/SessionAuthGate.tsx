@@ -121,7 +121,8 @@ const clearTokenFromUrl = () => {
 export const SessionAuthGate: React.FC<SessionAuthGateProps> = ({ children }) => {
   const desktopRuntime = React.useMemo(() => isDesktopRuntime(), []);
   const vscodeRuntime = React.useMemo(() => isVSCodeRuntime(), []);
-  const skipAuth = desktopRuntime || vscodeRuntime;
+  const isWebRuntime = React.useMemo(() => !desktopRuntime && !vscodeRuntime, []);
+  const skipAuth = desktopRuntime || vscodeRuntime || isWebRuntime;
   const [state, setState] = React.useState<GateState>(() => (skipAuth ? 'authenticated' : 'pending'));
   const [password, setPassword] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
