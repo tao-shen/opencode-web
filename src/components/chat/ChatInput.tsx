@@ -260,9 +260,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onOpenSettings, scrollToBo
         // Re-pin and scroll to bottom when sending
         scrollToBottom?.({ instant: true, force: true });
 
-        if (!currentProviderId || !currentModelId) {
-            console.warn('Cannot send message: provider or model not selected');
-            return;
+        // Use default provider/model if not selected
+        let providerId = currentProviderId;
+        let modelId = currentModelId;
+        
+        if (!providerId || !modelId) {
+            // Default to free model
+            providerId = 'openai';
+            modelId = 'gpt-4o-mini';
         }
 
         // Build the primary message (first part) and additional parts
@@ -369,8 +374,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onOpenSettings, scrollToBo
                     const response = await opencodeClient.getApiClient().session.summarize({
                         sessionID: currentSessionId,
                         directory: directory || undefined,
-                        providerID: currentProviderId,
-                        modelID: currentModelId,
+                        providerID: providerId,
+                        modelID: modelId,
                     });
                     if (response.error) {
                         throw new Error('Failed to compact session');
@@ -393,8 +398,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onOpenSettings, scrollToBo
 
         void sendMessage(
             primaryText,
-            currentProviderId,
-            currentModelId,
+            providerId,
+            modelId,
             currentAgentName,
             primaryAttachments,
             agentMentionName,
