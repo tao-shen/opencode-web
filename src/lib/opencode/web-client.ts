@@ -52,13 +52,56 @@ export type DirectorySwitchResult = {
   models?: unknown[];
 };
 
-// Helper to get base URL - works in both browser and server environments
+// Mock provider data - matches /api/openchamber/models-metadata
+const MOCK_PROVIDERS: Provider[] = [
+  {
+    id: 'opencode',
+    name: 'OpenCode',
+    models: [
+      { id: 'big-pickle', name: 'Big Pickle' },
+      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
+      { id: 'gpt-4o', name: 'GPT-4o' },
+    ],
+  },
+  {
+    id: 'anthropic',
+    name: 'Anthropic',
+    models: [
+      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
+      { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
+    ],
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    models: [
+      { id: 'gpt-4o', name: 'GPT-4o' },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
+      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
+    ],
+  },
+  {
+    id: 'google',
+    name: 'Google',
+    models: [
+      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' },
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+    ],
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    models: [
+      { id: 'deepseek-chat', name: 'DeepSeek Chat' },
+    ],
+  },
+];
+
+// Helper to get base URL
 const getBaseUrl = (): string => {
-  // In browser, use window.__OPENCODE_URL__ if available (set by Next.js)
   if (typeof window !== 'undefined' && (window as any).__OPENCODE_URL__) {
     return (window as any).__OPENCODE_URL__;
   }
-  // Default to /api
   return "/api";
 };
 
@@ -85,7 +128,6 @@ class MockOpencodeService {
 
   // Session Management
   async listSessions(): Promise<Session[]> {
-    // Return mock sessions
     const now = Date.now();
     return [
       {
@@ -95,35 +137,27 @@ class MockOpencodeService {
         projectID: 'project-1',
         directory: this.currentDirectory || '/',
         version: '1.0.0',
-        time: {
-          created: now,
-          updated: now,
-        },
+        time: { created: now, updated: now },
       }
     ];
   }
 
   async createSession(params?: { parentID?: string; title?: string }): Promise<Session> {
     const now = Date.now();
-    const session: Session = {
+    return {
       id: `session-${Date.now()}`,
       title: params?.title || 'New Session',
       slug: `session-${Date.now()}`,
       projectID: 'project-1',
       directory: this.currentDirectory || '/',
       version: '1.0.0',
-      time: {
-        created: now,
-        updated: now,
-      },
+      time: { created: now, updated: now },
       parentID: params?.parentID,
     };
-    return session;
   }
 
   async getSession(id: string): Promise<Session> {
     const now = Date.now();
-    // Return mock session
     return {
       id,
       title: 'Mock Session',
@@ -131,10 +165,7 @@ class MockOpencodeService {
       projectID: 'project-1',
       directory: this.currentDirectory || '/',
       version: '1.0.0',
-      time: {
-        created: now,
-        updated: now,
-      },
+      time: { created: now, updated: now },
     };
   }
 
@@ -163,26 +194,11 @@ class MockOpencodeService {
     prefaceTextSynthetic?: boolean;
     agent?: string;
     variant?: string;
-    files?: Array<{
-      type: 'file';
-      mime: string;
-      filename?: string;
-      url: string;
-    }>;
-    additionalParts?: Array<{
-      text: string;
-      synthetic?: boolean;
-      files?: Array<{
-        type: 'file';
-        mime: string;
-        filename?: string;
-        url: string;
-      }>;
-    }>;
+    files?: Array<{ type: 'file'; mime: string; filename?: string; url: string }>;
+    additionalParts?: Array<{ text: string; synthetic?: boolean; files?: Array<{ type: 'file'; mime: string; filename?: string; url: string }> }>;
     messageId?: string;
     agentMentions?: Array<{ name: string; source?: { value: string; start: number; end: number } }>;
   }): Promise<string> {
-    // Return a mock message ID
     return `msg-${Date.now()}`;
   }
 
@@ -202,21 +218,15 @@ class MockOpencodeService {
     return this.createSession({ title: 'Forked Session' });
   }
 
-  async getSessionStatus(): Promise<
-    Record<string, { type: "idle" | "busy" | "retry"; attempt?: number; message?: string; next?: number }>
-  > {
+  async getSessionStatus(): Promise<Record<string, { type: "idle" | "busy" | "retry"; attempt?: number; message?: string; next?: number }>> {
     return {};
   }
 
-  async getSessionStatusForDirectory(
-    directory: string | null | undefined
-  ): Promise<Record<string, { type: "idle" | "busy" | "retry"; attempt?: number; message?: string; next?: number }>> {
+  async getSessionStatusForDirectory(directory: string | null | undefined): Promise<Record<string, { type: "idle" | "busy" | "retry"; attempt?: number; message?: string; next?: number }>> {
     return {};
   }
 
-  async getGlobalSessionStatus(): Promise<
-    Record<string, { type: "idle" | "busy" | "retry"; attempt?: number; message?: string; next?: number }>
-  > {
+  async getGlobalSessionStatus(): Promise<Record<string, { type: "idle" | "busy" | "retry"; attempt?: number; message?: string; next?: number }>> {
     return {};
   }
 
@@ -226,10 +236,7 @@ class MockOpencodeService {
 
   // System Info
   async getSystemInfo(): Promise<{ homeDirectory: string; username?: string }> {
-    return {
-      homeDirectory: '/home/webuser',
-      username: 'webuser'
-    };
+    return { homeDirectory: '/home/webuser', username: 'webuser' };
   }
 
   async getFilesystemHome(): Promise<string> {
@@ -242,11 +249,7 @@ class MockOpencodeService {
   }
 
   // Permissions
-  async replyToPermission(
-    requestId: string,
-    reply: 'once' | 'always' | 'reject',
-    options?: { message?: string }
-  ): Promise<boolean> {
+  async replyToPermission(requestId: string, reply: 'once' | 'always' | 'reject', options?: { message?: string }): Promise<boolean> {
     return true;
   }
 
@@ -271,6 +274,7 @@ class MockOpencodeService {
   async getConfig(): Promise<Config> {
     return {
       theme: 'dark',
+      providers: MOCK_PROVIDERS,
     };
   }
 
@@ -283,13 +287,10 @@ class MockOpencodeService {
     return modifier(current);
   }
 
-  async getProviders(): Promise<{
-    providers: Provider[];
-    default: { [key: string]: string };
-  }> {
+  async getProviders(): Promise<{ providers: Provider[]; default: { [key: string]: string } }> {
     return {
-      providers: [],
-      default: {}
+      providers: MOCK_PROVIDERS,
+      default: { default: 'opencode' }
     };
   }
 
@@ -312,7 +313,7 @@ class MockOpencodeService {
 
   // File Operations
   async readFile(path: string): Promise<string> {
-    return `// Mock content for ${path}\n// This is a web-compatible implementation`;
+    return `// Mock content for ${path}`;
   }
 
   async listFiles(directory?: string): Promise<Record<string, unknown>[]> {
@@ -328,21 +329,17 @@ class MockOpencodeService {
     return true;
   }
 
-  // Event Streaming (Mock Implementation)
+  // Event Streaming
   subscribeToGlobalEvents(
     onEvent: (event: RoutedOpencodeEvent) => void,
     onError?: (error: unknown) => void,
     onOpen?: () => void,
     options?: { directory?: string | null }
   ): () => void {
-    // Mock implementation - just return a cleanup function
-    if (onOpen) {
-      setTimeout(() => onOpen(), 0);
-    }
+    if (onOpen) setTimeout(() => onOpen(), 0);
     
-    // Send a mock event
     setTimeout(() => {
-      const mockEvent: RoutedOpencodeEvent = {
+      onEvent({
         directory: options?.directory || 'global',
         payload: {
           type: 'session.created',
@@ -358,13 +355,10 @@ class MockOpencodeService {
             }
           }
         }
-      };
-      onEvent(mockEvent);
+      });
     }, 100);
 
-    return () => {
-      // Cleanup
-    };
+    return () => {};
   }
 
   subscribeToEvents(
@@ -374,31 +368,14 @@ class MockOpencodeService {
     directoryOverride?: string | null,
     options?: { scope?: 'global' | 'directory'; key?: string }
   ): () => void {
-    // Mock implementation
-    if (onOpen) {
-      setTimeout(() => onOpen(), 0);
-    }
-    
-    // Send mock events
-    const mockEvent = {
-      type: 'session_status',
-      properties: {
-        status: 'idle'
-      }
-    };
-    
-    setTimeout(() => onMessage(mockEvent), 100);
-
-    return () => {
-      // Cleanup
-    };
+    if (onOpen) setTimeout(() => onOpen(), 0);
+    setTimeout(() => onMessage({ type: 'session_status', properties: { status: 'idle' } }), 100);
+    return () => {};
   }
 
   // Utility methods
   private normalizeCandidatePath(path?: string | null): string | null {
-    if (typeof path !== 'string') {
-      return null;
-    }
+    if (typeof path !== 'string') return null;
     return path.replace(/\\/g, '/');
   }
 
