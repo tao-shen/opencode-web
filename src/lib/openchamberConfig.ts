@@ -79,11 +79,11 @@ const getLegacyConfigPath = (projectDirectory: string): string => {
 };
 
 const getBaseUrl = (): string => {
-  const defaultBaseUrl = import.meta.env.VITE_OPENCODE_URL || '/api';
-  if (defaultBaseUrl.startsWith('/')) {
-    return defaultBaseUrl;
+  // In browser, use window.__OPENCODE_URL__ if available (set by Next.js)
+  if (typeof window !== 'undefined' && (window as any).__OPENCODE_URL__) {
+    return (window as any).__OPENCODE_URL__;
   }
-  return defaultBaseUrl;
+  return "/api";
 };
 
 const postJson = async <T>(url: string, body: unknown): Promise<{ ok: boolean; data: T | null }> => {

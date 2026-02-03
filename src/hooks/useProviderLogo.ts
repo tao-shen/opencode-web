@@ -8,18 +8,13 @@ interface UseProviderLogoReturn {
     hasLogo: boolean;
 }
 
-const localLogoModules = import.meta.glob<string>('../assets/provider-logos/*.svg', {
-    eager: true,
-    import: 'default',
-});
-
+// Static map of provider logos - populated on first use
+// In production, these would be imported explicitly
 const LOCAL_PROVIDER_LOGO_MAP = new Map<string, string>();
 
-for (const [path, url] of Object.entries(localLogoModules)) {
-    const match = path.match(/provider-logos\/([^/]+)\.svg$/i);
-    if (match?.[1] && url) {
-        LOCAL_PROVIDER_LOGO_MAP.set(match[1].toLowerCase(), url);
-    }
+// Initialize with remote URLs only (Next.js compatible)
+for (const provider of ['openai', 'anthropic', 'google', 'deepseek', 'xai', 'mistral', 'cohere', 'azure']) {
+    LOCAL_PROVIDER_LOGO_MAP.set(provider, `https://models.dev/logos/${provider}.svg`);
 }
 
 export function useProviderLogo(providerId: string | null | undefined): UseProviderLogoReturn {

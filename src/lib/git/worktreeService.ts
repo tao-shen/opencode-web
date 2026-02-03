@@ -5,7 +5,15 @@ import type { FilesAPI, RuntimeAPIs } from '@/lib/api/types';
 import { substituteCommandVariables } from '@/lib/openchamberConfig';
 
 const WORKTREE_ROOT = '.openchamber';
-const DEFAULT_BASE_URL = import.meta.env.VITE_OPENCODE_URL || '/api';
+
+// Helper to get base URL - works in both browser and server environments
+const getBaseUrl = (): string => {
+  // In browser, use window.__OPENCODE_URL__ if available (set by Next.js)
+  if (typeof window !== 'undefined' && (window as any).__OPENCODE_URL__) {
+    return (window as any).__OPENCODE_URL__;
+  }
+  return "/api";
+};
 
 /**
  * Get the runtime Files API if available (Desktop/VSCode).
@@ -254,7 +262,7 @@ export async function runWorktreeSetupCommands(
     // Fall back to web API
     console.log('[worktreeService] Using web API for exec');
 
-    const startResponse = await fetch(`${DEFAULT_BASE_URL}/fs/exec`, {
+    const startResponse = await fetch(`${getBaseUrl()}/fs/exec`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -278,7 +286,7 @@ export async function runWorktreeSetupCommands(
       while (Date.now() - startedAt < timeoutMs) {
         await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
 
-        const pollResponse = await fetch(`${DEFAULT_BASE_URL}/fs/exec/${jobId}`, {
+        const pollResponse = await fetch(`${getBaseUrl()}/fs/exec/${jobId}`, {
           method: 'GET',
         });
 

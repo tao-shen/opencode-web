@@ -2,13 +2,12 @@ import type { CommandExecResult, FilesAPI, RuntimeAPIs } from '@/lib/api/types';
 
 type ExecResult = { success: boolean; results: CommandExecResult[] };
 
-const DEFAULT_BASE_URL = import.meta.env.VITE_OPENCODE_URL || '/api';
-
 const getBaseUrl = (): string => {
-  if (typeof DEFAULT_BASE_URL === 'string' && DEFAULT_BASE_URL.startsWith('/')) {
-    return DEFAULT_BASE_URL;
+  // In browser, use window.__OPENCODE_URL__ if available (set by Next.js)
+  if (typeof window !== 'undefined' && (window as any).__OPENCODE_URL__) {
+    return (window as any).__OPENCODE_URL__;
   }
-  return DEFAULT_BASE_URL;
+  return "/api";
 };
 
 function getRuntimeFilesAPI(): FilesAPI | null {

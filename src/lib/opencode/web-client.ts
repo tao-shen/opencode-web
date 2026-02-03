@@ -13,6 +13,7 @@ import type {
   FilePartInput,
   Event,
 } from "@opencode-ai/sdk/v2";
+import type { SessionStatus } from "@opencode-ai/sdk/v2";
 
 type StreamEvent<TData> = {
   data: TData;
@@ -51,6 +52,16 @@ export type DirectorySwitchResult = {
   models?: unknown[];
 };
 
+// Helper to get base URL - works in both browser and server environments
+const getBaseUrl = (): string => {
+  // In browser, use window.__OPENCODE_URL__ if available (set by Next.js)
+  if (typeof window !== 'undefined' && (window as any).__OPENCODE_URL__) {
+    return (window as any).__OPENCODE_URL__;
+  }
+  // Default to /api
+  return "/api";
+};
+
 class MockOpencodeService {
   private baseUrl: string;
   private currentDirectory: string | undefined = undefined;
@@ -75,45 +86,55 @@ class MockOpencodeService {
   // Session Management
   async listSessions(): Promise<Session[]> {
     // Return mock sessions
+    const now = Date.now();
     return [
       {
         id: 'mock-session-1',
         title: 'Welcome to OpenChamber Web',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        slug: 'welcome',
+        projectID: 'project-1',
         directory: this.currentDirectory || '/',
-        status: 'idle',
-        messages: [],
-        metadata: {},
+        version: '1.0.0',
+        time: {
+          created: now,
+          updated: now,
+        },
       }
     ];
   }
 
   async createSession(params?: { parentID?: string; title?: string }): Promise<Session> {
+    const now = Date.now();
     const session: Session = {
       id: `session-${Date.now()}`,
       title: params?.title || 'New Session',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      slug: `session-${Date.now()}`,
+      projectID: 'project-1',
       directory: this.currentDirectory || '/',
-      status: 'idle',
-      messages: [],
-      metadata: {},
+      version: '1.0.0',
+      time: {
+        created: now,
+        updated: now,
+      },
+      parentID: params?.parentID,
     };
     return session;
   }
 
   async getSession(id: string): Promise<Session> {
+    const now = Date.now();
     // Return mock session
     return {
       id,
       title: 'Mock Session',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      slug: id,
+      projectID: 'project-1',
       directory: this.currentDirectory || '/',
-      status: 'idle',
-      messages: [],
-      metadata: {},
+      version: '1.0.0',
+      time: {
+        created: now,
+        updated: now,
+      },
     };
   }
 
@@ -211,6 +232,10 @@ class MockOpencodeService {
     };
   }
 
+  async getFilesystemHome(): Promise<string> {
+    return '/home/webuser';
+  }
+
   // Tools
   async listToolIds(options?: { directory?: string | null }): Promise<string[]> {
     return [];
@@ -245,11 +270,7 @@ class MockOpencodeService {
   // Configuration
   async getConfig(): Promise<Config> {
     return {
-      providers: [],
-      models: {},
-      agents: [],
-      settings: {},
-      version: '0.0.3-web',
+      theme: 'dark',
     };
   }
 
@@ -320,9 +341,18 @@ class MockOpencodeService {
       const mockEvent: RoutedOpencodeEvent = {
         directory: options?.directory || 'global',
         payload: {
-          type: 'session_created',
-          timestamp: new Date().toISOString(),
-          properties: {}
+          type: 'session.created',
+          properties: {
+            info: {
+              id: 'mock-session-1',
+              title: 'Welcome',
+              slug: 'welcome',
+              projectID: 'project-1',
+              directory: '/',
+              version: '1.0.0',
+              time: { created: Date.now(), updated: Date.now() },
+            }
+          }
         }
       };
       onEvent(mockEvent);
