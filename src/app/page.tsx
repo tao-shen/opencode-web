@@ -153,9 +153,31 @@ export default function HomePage() {
               </div>
             </Link>
 
-            
+            {/* Card 4: OpenChamber */}
+            <Link href="/openchamber" style={styles.actionCard}>
+              <div style={styles.actionIcon}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FF375F" strokeWidth="1.5">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M9 3v18" />
+                  <path d="M3 9h6" />
+                  <path d="M3 15h6" />
+                </svg>
+              </div>
+              <h3 style={styles.actionTitle}>OpenChamber</h3>
+              <p style={styles.actionDesc}>
+                Full OpenChamber UI. Complete chat interface with diff viewer, file tree, and session management.
+              </p>
+              <div style={styles.actionLink}>
+                <span>Open OpenChamber</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </div>
+            </Link>
 
-            {/* Card 4: API */}
+            {/* Card 5: API */}
             <Link href="/docs" style={styles.actionCard}>
               <div style={styles.actionIcon}>
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="1.5">
