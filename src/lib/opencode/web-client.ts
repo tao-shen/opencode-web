@@ -199,7 +199,36 @@ class MockOpencodeService {
     messageId?: string;
     agentMentions?: Array<{ name: string; source?: { value: string; start: number; end: number } }>;
   }): Promise<string> {
-    return `msg-${Date.now()}`;
+    try {
+      const response = await fetch(`${getBaseUrl()}/v2/send-message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionID: params.id,
+          providerID: params.providerID,
+          modelID: params.modelID,
+          text: params.text,
+          agent: params.agent,
+          variant: params.variant,
+          files: params.files,
+          additionalParts: params.additionalParts,
+          agentMentions: params.agentMentions,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to send message: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data.messageID || `msg-${Date.now()}`;
+    } catch (error) {
+      console.error('Send message error:', error);
+      // Return a mock ID so the UI doesn't freeze
+      return `msg-${Date.now()}`;
+    }
   }
 
   async abortSession(id: string): Promise<boolean> {

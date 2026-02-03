@@ -129,7 +129,17 @@ export const SessionDialogs: React.FC = () => {
         loadSessions();
     }, [loadSessions, projectsKey]);
 
+    // Web version: skip the initial directory prompt - users can add projects manually
+    // This prevents the blocking dialog from appearing on page load
+    const isWebRuntime = typeof window !== 'undefined' && !isDesktopRuntime();
+    
     React.useEffect(() => {
+        // Skip for web runtime - don't show directory dialog on initial load
+        if (isWebRuntime) {
+            setHasShownInitialDirectoryPrompt(true);
+            return;
+        }
+        
         if (hasShownInitialDirectoryPrompt || !isHomeReady || projects.length > 0) {
             return;
         }
@@ -178,6 +188,7 @@ export const SessionDialogs: React.FC = () => {
         projects.length,
         requestAccess,
         startAccessing,
+        isWebRuntime,
     ]);
 
     const openDeleteDialog = React.useCallback((payload: { sessions: Session[]; dateLabel?: string; mode?: 'session' | 'worktree'; worktree?: WorktreeMetadata | null }) => {
