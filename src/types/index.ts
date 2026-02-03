@@ -140,6 +140,17 @@ export interface PermissionRequest {
   time: number
 }
 
+export type Message = UserMessage | AssistantMessage
+
+export interface ChatMessage {
+  id: string
+  sessionID: string
+  role: 'user' | 'assistant'
+  content: string
+  time: number
+  parts?: MessagePart[]
+}
+
 export interface CreateSessionRequest {
   title?: string
   directory?: string

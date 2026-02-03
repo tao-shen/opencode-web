@@ -5,6 +5,7 @@ import type {
   AssistantMessage,
   PermissionRequest,
   SessionStatus,
+  PermissionRuleset,
 } from '../types'
 import {
   createSession as storageCreateSession,
@@ -82,7 +83,7 @@ export async function getSessionById(sessionID: string): Promise<Session | null>
   
   return {
     ...session,
-    permission: session.permission as Session['permission'],
+    permission: (session.permission as unknown) as PermissionRuleset,
     status: session.status as SessionStatus,
   }
 }
@@ -93,7 +94,7 @@ export async function listProjectSessions(projectID: string, limit = 20): Promis
   
   return sessions.map((session) => ({
     ...session,
-    permission: session.permission as Session['permission'],
+    permission: (session.permission as unknown) as PermissionRuleset,
     status: session.status as SessionStatus,
   }))
 }
