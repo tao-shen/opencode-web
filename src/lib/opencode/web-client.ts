@@ -319,6 +319,10 @@ class MockOpencodeService {
     return [];
   }
 
+  async listLocalDirectory(): Promise<Record<string, unknown>[]> {
+    return [];
+  }
+
   // Directory Operations
   async probeDirectory(directory: string): Promise<boolean> {
     return true;
