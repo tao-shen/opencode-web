@@ -1,11 +1,14 @@
 // Mock worker factory for Next.js compatibility
 export function workerFactory(): Worker {
-  // In Next.js web environment, we need to create a simple mock worker
-  // This provides basic functionality for diff operations
   const mockWorkerCode = `
     self.onmessage = function(e) {
-      // Simple mock implementation
-      postMessage({ type: 'diff', result: null });
+      const data = e.data;
+      // Echo back with the same ID format expected by the handler
+      postMessage({ 
+        type: 'diff', 
+        id: data?.id,
+        result: data?.oldString === data?.newString ? [] : [[0, data?.oldString || ''], [1, data?.newString || '']]
+      });
     };
   `;
   
